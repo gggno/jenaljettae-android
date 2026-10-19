@@ -1,4 +1,3 @@
-
 package com.geunho.jenaljettae
 
 import android.os.Bundle
@@ -11,7 +10,9 @@ import com.geunho.jenaljettae.ui.theme.JENALJETTAETheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         enableEdgeToEdge()
+        window.isNavigationBarContrastEnforced = false
 
         setContent {
             JENALJETTAETheme {

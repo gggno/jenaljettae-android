@@ -26,6 +26,7 @@ import com.geunho.jenaljettae.ui.theme.AppSpacing
 import com.geunho.jenaljettae.ui.theme.AppTheme
 import com.geunho.jenaljettae.ui.theme.AppTypography
 import com.geunho.jenaljettae.ui.theme.JENALJETTAETheme
+import com.geunho.jenaljettae.features.home.HomeScreen
 
 // MARK: - Main Tab
 
@@ -77,11 +78,16 @@ fun MainTabScreen() {
         }
     ) { innerPadding ->
 
-        // 실제 화면 개발 전에는 선택된 탭의 임시 화면 표시
-        TabPlaceholderScreen(
-            title = selectedTab.title,
-            modifier = Modifier.padding(innerPadding)
-        )
+        when (selectedTab) {
+            MainTab.HOME -> HomeScreen(modifier = Modifier.padding(innerPadding))
+
+            MainTab.LIBRARY, MainTab.SETTINGS -> {
+                TabPlaceholderScreen(
+                    title = selectedTab.title,
+                    modifier = Modifier.padding(innerPadding)
+                )
+            }
+        }
     }
 }
 
