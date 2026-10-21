@@ -29,6 +29,13 @@ import com.geunho.jenaljettae.ui.theme.AppTypography
 import com.geunho.jenaljettae.ui.theme.JENALJETTAETheme
 import com.geunho.jenaljettae.ui.theme.AppIcon
 
+// MARK: - Item Card Mode
+
+enum class ItemCardMode {
+    RECORD,
+    TYPE_SELECTION
+}
+
 // MARK: - Item Card
 
 @Composable
@@ -39,7 +46,8 @@ fun ItemCard(
     statusLabel: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    statusTone: StatusBadgeTone = StatusBadgeTone.NEUTRAL
+    statusTone: StatusBadgeTone = StatusBadgeTone.NEUTRAL,
+    mode: ItemCardMode = ItemCardMode.RECORD
 ) {
     val colors = AppTheme.colors
 
@@ -95,9 +103,22 @@ fun ItemCard(
                 )
             }
 
-            // MARK: - Status Badge
+            // MARK: - Status Badge / Selection Icon
 
-            StatusBadge(label = statusLabel, tone = statusTone)
+            when (mode) {
+                ItemCardMode.RECORD -> {
+                    StatusBadge(label = statusLabel, tone = statusTone)
+                }
+
+                ItemCardMode.TYPE_SELECTION -> {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_jnt_chevron_right),
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = colors.textSecondary
+                    )
+                }
+            }
         }
     }
 }
@@ -124,6 +145,15 @@ private fun ItemCardPreviewContent() {
             subtitle = "예약 · 10.21 15:00",
             iconRes = AppIcon.reservation,
             statusLabel = "예정",
+            onClick = {}
+        )
+
+        ItemCard(
+            title = "쿠폰·기프티콘",
+            subtitle = "상품 교환권, 할인 쿠폰",
+            iconRes = AppIcon.coupon,
+            statusLabel = "",
+            mode = ItemCardMode.TYPE_SELECTION,
             onClick = {}
         )
     }

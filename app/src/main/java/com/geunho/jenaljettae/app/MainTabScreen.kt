@@ -1,4 +1,3 @@
-
 package com.geunho.jenaljettae.app
 
 import androidx.annotation.DrawableRes
@@ -21,12 +20,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
+import com.geunho.jenaljettae.features.home.HomeScreen
+import com.geunho.jenaljettae.features.home.RegistrationTypeSelectionScreen
 import com.geunho.jenaljettae.ui.theme.AppIcon
 import com.geunho.jenaljettae.ui.theme.AppSpacing
 import com.geunho.jenaljettae.ui.theme.AppTheme
 import com.geunho.jenaljettae.ui.theme.AppTypography
 import com.geunho.jenaljettae.ui.theme.JENALJETTAETheme
-import com.geunho.jenaljettae.features.home.HomeScreen
 
 // MARK: - Main Tab
 
@@ -41,7 +41,18 @@ private enum class MainTab(val title: String, @DrawableRes val iconRes: Int) {
 @Composable
 fun MainTabScreen() {
     var selectedTab by rememberSaveable { mutableStateOf(MainTab.HOME) }
+    var showsRegistrationTypeSelection by rememberSaveable { mutableStateOf(false) }
+
     val colors = AppTheme.colors
+
+    // MARK: - Registration Type Selection
+
+    if (showsRegistrationTypeSelection) {
+        RegistrationTypeSelectionScreen(
+            onClose = { showsRegistrationTypeSelection = false }
+        )
+        return
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -78,8 +89,15 @@ fun MainTabScreen() {
         }
     ) { innerPadding ->
 
+        // MARK: - Selected Tab Content
+
         when (selectedTab) {
-            MainTab.HOME -> HomeScreen(modifier = Modifier.padding(innerPadding))
+            MainTab.HOME -> {
+                HomeScreen(
+                    modifier = Modifier.padding(innerPadding),
+                    onAdd = { showsRegistrationTypeSelection = true }
+                )
+            }
 
             MainTab.LIBRARY, MainTab.SETTINGS -> {
                 TabPlaceholderScreen(
