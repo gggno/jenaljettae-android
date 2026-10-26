@@ -15,7 +15,7 @@ object AppIcon {
     val coupon = R.drawable.ic_jnt_coupon
     val pass = R.drawable.ic_jnt_pass
     val subscription = R.drawable.ic_jnt_subscription
-    val reservation = R.drawable.ic_jnt_reservation
+    val schedule = R.drawable.ic_jnt_schedule
 
     // MARK: - Actions
     val add = R.drawable.ic_jnt_add

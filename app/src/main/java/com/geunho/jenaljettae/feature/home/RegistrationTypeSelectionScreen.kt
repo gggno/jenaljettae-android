@@ -155,11 +155,11 @@ fun RegistrationTypeSelectionScreen(onClose: () -> Unit) {
                 )
 
                 RegistrationTypeCard(
-                    title = "예약",
+                    title = "일정",
                     subtitle = "식당, 병원, 미용실, 숙박",
-                    iconRes = AppIcon.reservation,
+                    iconRes = AppIcon.schedule,
                     onClick = {
-                        selectedTypeName = "예약"
+                        selectedTypeName = "일정"
                         showsNextStepNotice = true
                     }
                 )

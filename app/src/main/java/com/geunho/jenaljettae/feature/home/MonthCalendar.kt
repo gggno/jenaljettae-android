@@ -116,6 +116,7 @@ fun MonthCalendar(
     modifier: Modifier = Modifier
 ) {
     val colors = AppTheme.colors
+    val hapticFeedback = LocalHapticFeedback.current
     val calendarShape = RoundedCornerShape(18.dp)
     val monthStart = visibleMonth.withDayOfMonth(1)
     val leadingDays = monthStart.dayOfWeek.value % 7
@@ -304,7 +305,10 @@ fun MonthCalendar(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                         role = Role.Button,
-                        onClick = onToday
+                        onClick = {
+                            hapticFeedback.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                            onToday()
+                        }
                     ),
                 contentAlignment = Alignment.Center
             ) {

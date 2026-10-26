@@ -143,7 +143,7 @@ private fun ItemCardPreviewContent() {
         ItemCard(
             title = "헤어 커트 예약",
             subtitle = "예약 · 10.21 15:00",
-            iconRes = AppIcon.reservation,
+            iconRes = AppIcon.schedule,
             statusLabel = "예정",
             onClick = {}
         )

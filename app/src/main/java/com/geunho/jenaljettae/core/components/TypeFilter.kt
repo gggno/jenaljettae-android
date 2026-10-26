@@ -1,7 +1,9 @@
+
 package com.geunho.jenaljettae.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -11,9 +13,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -23,21 +26,17 @@ import androidx.compose.ui.unit.dp
 import com.geunho.jenaljettae.ui.theme.AppSpacing
 import com.geunho.jenaljettae.ui.theme.AppTheme
 import com.geunho.jenaljettae.ui.theme.AppTypography
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.runtime.remember
 
-// MARK: - Filter Type
-
+// MARK: - Filter Type | 일정 유형별 표시 이름 정의
 enum class ItemTypeFilter(val title: String) {
     ALL("전체"),
     COUPON("쿠폰"),
     PASS("이용권"),
     SUBSCRIPTION("구독"),
-    RESERVATION("예약")
+    SCHEDULE("일정")
 }
 
-// MARK: - Type Filter
-
+// MARK: - Type Filter | 유형 선택 및 선택 상태에 따른 UI 표시
 @Composable
 fun TypeFilter(
     selectedType: ItemTypeFilter,
@@ -52,7 +51,7 @@ fun TypeFilter(
             .horizontalScroll(rememberScrollState())
             .padding(horizontal = AppSpacing.screenHorizontal)
             .selectableGroup(),
-        horizontalArrangement = Arrangement.spacedBy(AppSpacing.xxSmall),
+        horizontalArrangement = Arrangement.spacedBy(AppSpacing.xSmall),
         verticalAlignment = Alignment.CenterVertically
     ) {
         ItemTypeFilter.entries.forEach { type ->
@@ -76,13 +75,11 @@ fun TypeFilter(
                     fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
                     color = if (isSelected) colors.onPrimary else colors.textSecondary,
                     modifier = Modifier
-                        .clip(CircleShape)
+                        .clip(RoundedCornerShape(10.dp))
                         .background(if (isSelected) colors.primary else colors.inputSurface)
                         .padding(horizontal = AppSpacing.small, vertical = AppSpacing.xSmall)
                 )
             }
-
-
         }
     }
 }
