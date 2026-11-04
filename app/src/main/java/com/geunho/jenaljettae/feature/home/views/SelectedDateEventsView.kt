@@ -1,4 +1,4 @@
-package com.geunho.jenaljettae.features.home
+package com.geunho.jenaljettae.features.home.views
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.layout.Arrangement
@@ -96,7 +96,7 @@ internal fun SelectedDateEventsView(
 // MARK: - Sample Event
 
 internal data class HomeSampleEvent(
-    val id: Int,
+    val id: String,
     val date: LocalDate,
     val type: ItemTypeFilter,
     val title: String,

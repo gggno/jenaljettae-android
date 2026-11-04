@@ -12,21 +12,33 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.geunho.jenaljettae.data.local.AppDatabase
+import com.geunho.jenaljettae.data.local.CouponImageStorage
+import com.geunho.jenaljettae.data.repository.LocalCouponImageRepository
+import com.geunho.jenaljettae.data.repository.RoomManagedItemRepository
 import com.geunho.jenaljettae.data.repository.SampleManagedItemRepository
+import com.geunho.jenaljettae.domain.model.ManagedItem
+import com.geunho.jenaljettae.domain.usecase.SaveCouponUseCase
 import com.geunho.jenaljettae.features.home.HomeScreen
 import com.geunho.jenaljettae.features.home.HomeViewModel
-import com.geunho.jenaljettae.features.home.RegistrationTypeSelectionScreen
+import com.geunho.jenaljettae.features.home.registration.LocalOnCouponSaved
+import com.geunho.jenaljettae.features.home.registration.LocalSaveCouponUseCase
+import com.geunho.jenaljettae.features.home.registration.RegistrationNavHost
 import com.geunho.jenaljettae.ui.theme.AppIcon
 import com.geunho.jenaljettae.ui.theme.AppSpacing
 import com.geunho.jenaljettae.ui.theme.AppTheme
@@ -40,13 +52,19 @@ private enum class MainTab(val title: String, @DrawableRes val iconRes: Int) {
     SETTINGS("설정", AppIcon.settings)
 }
 
-// MARK: - Main Tab Screen | 탭 이동과 HomeViewModel 생성·주입 담당
+// MARK: - Main Tab Screen | 탭 이동과 Room Repository 연결
 @Composable
 fun MainTabScreen(
-    // MARK: - Dependency Injection | 앱에서는 ViewModelStore에 보관하고 Preview에서는 직접 주입 가능
     homeViewModel: HomeViewModel = viewModel(
         factory = viewModelFactory {
-            initializer { HomeViewModel(SampleManagedItemRepository()) }
+            initializer {
+                val application = checkNotNull(
+                    this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]
+                )
+                val database = AppDatabase.getInstance(application)
+                val repository = RoomManagedItemRepository(database.managedItemDao())
+                HomeViewModel(repository)
+            }
         }
     )
 ) {
@@ -54,9 +72,32 @@ fun MainTabScreen(
     var showsRegistrationTypeSelection by rememberSaveable { mutableStateOf(false) }
     val colors = AppTheme.colors
 
-    // MARK: - Registration | 등록 유형 선택 화면을 열면 기존 탭 화면을 일시 교체
+    // MARK: - Registration | 저장 UseCase와 완료 콜백을 등록 NavHost에 제공
     if (showsRegistrationTypeSelection) {
-        RegistrationTypeSelectionScreen(onClose = { showsRegistrationTypeSelection = false })
+        val context = LocalContext.current.applicationContext
+        val saveCouponUseCase = remember(context) {
+            val database = AppDatabase.getInstance(context)
+            val repository = RoomManagedItemRepository(database.managedItemDao())
+            val imageStorage = CouponImageStorage(context)
+            val imageRepository = LocalCouponImageRepository(imageStorage)
+
+            SaveCouponUseCase(repository, imageRepository)
+        }
+
+        val onCouponSaved: (ManagedItem) -> Unit = { savedItem ->
+            homeViewModel.pickDate(savedItem.endDate ?: savedItem.startDate)
+            selectedTab = MainTab.HOME
+            showsRegistrationTypeSelection = false
+        }
+
+        CompositionLocalProvider(
+            LocalSaveCouponUseCase provides saveCouponUseCase,
+            LocalOnCouponSaved provides onCouponSaved
+        ) {
+            RegistrationNavHost(
+                onClose = { showsRegistrationTypeSelection = false }
+            )
+        }
         return
     }
 
@@ -71,7 +112,12 @@ fun MainTabScreen(
                         NavigationBarItem(
                             selected = selectedTab == tab,
                             onClick = { selectedTab = tab },
-                            icon = { Icon(painter = painterResource(tab.iconRes), contentDescription = null) },
+                            icon = {
+                                Icon(
+                                    painter = painterResource(tab.iconRes),
+                                    contentDescription = null
+                                )
+                            },
                             label = { Text(tab.title) },
                             alwaysShowLabel = true,
                             colors = NavigationBarItemDefaults.colors(
@@ -87,7 +133,7 @@ fun MainTabScreen(
             }
         }
     ) { innerPadding ->
-        // MARK: - Selected Tab | ViewModel을 홈 화면에 전달
+        // MARK: - Selected Tab | 선택한 탭의 화면 표시
         when (selectedTab) {
             MainTab.HOME -> HomeScreen(
                 viewModel = homeViewModel,
@@ -107,26 +153,45 @@ fun MainTabScreen(
 @Composable
 private fun TabPlaceholderScreen(title: String, modifier: Modifier = Modifier) {
     val colors = AppTheme.colors
+
     Column(
-        modifier = modifier.fillMaxSize()
-            .padding(horizontal = AppSpacing.screenHorizontal, vertical = AppSpacing.large),
+        modifier = modifier
+            .fillMaxSize()
+            .padding(
+                horizontal = AppSpacing.screenHorizontal,
+                vertical = AppSpacing.large
+            ),
         verticalArrangement = Arrangement.spacedBy(AppSpacing.small),
         horizontalAlignment = Alignment.Start
     ) {
-        Text(text = title, style = AppTypography.screenTitle, color = colors.textPrimary)
-        Text(text = "$title 화면 개발 예정", style = AppTypography.body, color = colors.textSecondary)
+        Text(
+            text = title,
+            style = AppTypography.screenTitle,
+            color = colors.textPrimary
+        )
+
+        Text(
+            text = "$title 화면 개발 예정",
+            style = AppTypography.body,
+            color = colors.textSecondary
+        )
     }
 }
 
-// MARK: - Light / Dark Preview | 기존 테마 미리보기
+// MARK: - Light Preview | 라이트 모드 미리보기
 @Preview(name = "Light", showBackground = true)
 @Composable
 private fun MainTabLightPreview() {
-    JENALJETTAETheme(darkTheme = false) { MainTabScreen(homeViewModel = HomeViewModel(SampleManagedItemRepository())) }
+    JENALJETTAETheme(darkTheme = false) {
+        MainTabScreen(homeViewModel = HomeViewModel(SampleManagedItemRepository()))
+    }
 }
 
+// MARK: - Dark Preview | 다크 모드 미리보기
 @Preview(name = "Dark", showBackground = true)
 @Composable
 private fun MainTabDarkPreview() {
-    JENALJETTAETheme(darkTheme = true) { MainTabScreen(homeViewModel = HomeViewModel(SampleManagedItemRepository())) }
+    JENALJETTAETheme(darkTheme = true) {
+        MainTabScreen(homeViewModel = HomeViewModel(SampleManagedItemRepository()))
+    }
 }

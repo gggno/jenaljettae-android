@@ -1,6 +1,10 @@
-package com.geunho.jenaljettae.features.home
+package com.geunho.jenaljettae.features.home.registration.coupon
 
+import android.graphics.BitmapFactory
+import android.net.Uri
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -29,10 +33,12 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -42,24 +48,72 @@ import com.geunho.jenaljettae.ui.theme.AppRadius
 import com.geunho.jenaljettae.ui.theme.AppSpacing
 import com.geunho.jenaljettae.ui.theme.AppTheme
 import com.geunho.jenaljettae.ui.theme.AppTypography
+import java.io.IOException
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-// MARK: - Coupon Registration Method
-
+// MARK: - Coupon Registration Method | 등록 방법 선택 및 화면 이동 이벤트 전달
 @Composable
-fun CouponRegistrationMethodScreen(onBack: () -> Unit) {
+fun CouponRegistrationMethodScreen(
+    onBack: () -> Unit,
+    onManualEntry: () -> Unit,
+    onImageSelected: (ByteArray, Uri) -> Unit
+) {
     val colors = AppTheme.colors
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
 
-    var showsNextStepNotice by rememberSaveable { mutableStateOf(false) }
-    var selectedMethodName by rememberSaveable { mutableStateOf("") }
-    var showsManualEntry by rememberSaveable { mutableStateOf(false) }
+    var isLoadingPhoto by remember { mutableStateOf(false) }
+    var photoLoadError by remember { mutableStateOf<String?>(null) }
 
-// MARK: - Manual Entry
+    // MARK: - Photo Picker | 선택한 사진을 검증한 뒤 NavHost에 전달
+    val photoPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null && !isLoadingPhoto) {
+            isLoadingPhoto = true
 
-    if (showsManualEntry) {
-        CouponManualEntryScreen(
-            onBack = { showsManualEntry = false }
-        )
-        return
+            coroutineScope.launch {
+                try {
+                    val imageData = withContext(Dispatchers.IO) {
+                        context.contentResolver.openInputStream(uri)?.use { input ->
+                            val data = input.readBytes()
+
+                            if (data.isEmpty() || data.size > 20 * 1024 * 1024) {
+                                throw IOException("20MB 이하의 이미지를 선택해주세요.")
+                            }
+
+                            data
+                        } ?: throw IOException("이미지를 불러올 수 없어요.")
+                    }
+
+                    // MARK: - Image Validation | 이미지 형식 및 디코딩 가능 여부 확인
+                    val isValidImage = withContext(Dispatchers.Default) {
+                        val options = BitmapFactory.Options().apply {
+                            inJustDecodeBounds = true
+                        }
+
+                        BitmapFactory.decodeByteArray(
+                            imageData, 0, imageData.size, options
+                        )
+
+                        options.outWidth > 0 && options.outHeight > 0
+                    }
+
+                    if (!isValidImage) throw IOException("지원하지 않는 이미지 형식이에요.")
+
+                    onImageSelected(imageData, uri)
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    photoLoadError = error.localizedMessage ?: "이미지를 불러올 수 없어요."
+                } finally {
+                    isLoadingPhoto = false
+                }
+            }
+        }
     }
 
     BackHandler { onBack() }
@@ -71,13 +125,14 @@ fun CouponRegistrationMethodScreen(onBack: () -> Unit) {
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
-
-        // MARK: - Header
-
+        // MARK: - Header | 뒤로가기 및 화면 제목
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = AppSpacing.screenHorizontal, vertical = AppSpacing.small),
+                .padding(
+                    horizontal = AppSpacing.xSmall,
+                    vertical = AppSpacing.small
+                ),
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(
@@ -103,19 +158,18 @@ fun CouponRegistrationMethodScreen(onBack: () -> Unit) {
             Spacer(modifier = Modifier.size(48.dp))
         }
 
-        // MARK: - Content
-
+        // MARK: - Content | 등록 방식 선택 및 안내
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = AppSpacing.screenHorizontal)
-                .padding(top = AppSpacing.large, bottom = AppSpacing.xLarge),
+                .padding(
+                    top = AppSpacing.large,
+                    bottom = AppSpacing.xLarge
+                ),
             verticalArrangement = Arrangement.spacedBy(AppSpacing.sectionSpacing)
         ) {
-
-            // MARK: - Description
-
             Column(
                 verticalArrangement = Arrangement.spacedBy(AppSpacing.xSmall)
             ) {
@@ -140,16 +194,13 @@ fun CouponRegistrationMethodScreen(onBack: () -> Unit) {
                 )
             }
 
-            // MARK: - Registration Buttons
-
+            // MARK: - Registration Buttons | AI 이미지 선택 및 수동 입력
             Column(
                 verticalArrangement = Arrangement.spacedBy(AppSpacing.small)
             ) {
                 Button(
-                    onClick = {
-                        selectedMethodName = "AI로 쿠폰 읽기"
-                        showsNextStepNotice = true
-                    },
+                    onClick = { photoPickerLauncher.launch("image/*") },
+                    enabled = !isLoadingPhoto,
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape = RoundedCornerShape(AppRadius.card),
                     colors = ButtonDefaults.buttonColors(
@@ -158,13 +209,13 @@ fun CouponRegistrationMethodScreen(onBack: () -> Unit) {
                     )
                 ) {
                     Text(
-                        text = "AI로 쿠폰 읽기",
+                        text = if (isLoadingPhoto) "이미지 불러오는 중..." else "AI로 쿠폰 읽기",
                         style = MaterialTheme.typography.titleSmall
                     )
                 }
 
                 OutlinedButton(
-                    onClick = { showsManualEntry = true },
+                    onClick = onManualEntry,
                     modifier = Modifier.fillMaxWidth().height(52.dp),
                     shape = RoundedCornerShape(AppRadius.card),
                     border = BorderStroke(1.dp, colors.border),
@@ -180,8 +231,7 @@ fun CouponRegistrationMethodScreen(onBack: () -> Unit) {
                 }
             }
 
-            // MARK: - Sample Coupon
-
+            // MARK: - Sample Coupon | 기존 안내 카드 유지
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -226,18 +276,15 @@ fun CouponRegistrationMethodScreen(onBack: () -> Unit) {
         }
     }
 
-    // MARK: - Temporary Notice
-
-    if (showsNextStepNotice) {
+    // MARK: - Photo Load Error | 이미지 불러오기 실패 안내
+    if (photoLoadError != null) {
         AlertDialog(
-            onDismissRequest = { showsNextStepNotice = false },
-            title = { Text("등록 기능 준비 중") },
-            text = {
-                Text("$selectedMethodName 기능은 다음 단계에서 연결할 예정이에요.")
-            },
+            onDismissRequest = { photoLoadError = null },
+            title = { Text("이미지를 불러올 수 없어요") },
+            text = { Text(photoLoadError.orEmpty()) },
             confirmButton = {
-                TextButton(onClick = { showsNextStepNotice = false }) {
-                    Text("확인", color = colors.primaryForeground)
+                TextButton(onClick = { photoLoadError = null }) {
+                    Text("확인")
                 }
             }
         )

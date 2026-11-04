@@ -1,4 +1,4 @@
-package com.geunho.jenaljettae.features.home
+package com.geunho.jenaljettae.features.home.registration
 
 import androidx.activity.compose.BackHandler
 import androidx.annotation.DrawableRes
@@ -32,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.geunho.jenaljettae.R
 import com.geunho.jenaljettae.core.components.ItemCard
@@ -42,24 +43,16 @@ import com.geunho.jenaljettae.ui.theme.AppSpacing
 import com.geunho.jenaljettae.ui.theme.AppTheme
 import com.geunho.jenaljettae.ui.theme.AppTypography
 
-// MARK: - Registration Type Selection
-
+// MARK: - Registration Type Selection | 등록 유형 선택 및 이동 이벤트 전달
 @Composable
-fun RegistrationTypeSelectionScreen(onClose: () -> Unit) {
+fun RegistrationTypeSelectionScreen(
+    onClose: () -> Unit,
+    onCouponSelected: () -> Unit
+) {
     val colors = AppTheme.colors
 
     var showsNextStepNotice by rememberSaveable { mutableStateOf(false) }
     var selectedTypeName by rememberSaveable { mutableStateOf("") }
-    var showsCouponRegistrationMethod by rememberSaveable { mutableStateOf(false) }
-
-// MARK: - Coupon Registration Method
-
-    if (showsCouponRegistrationMethod) {
-        CouponRegistrationMethodScreen(
-            onBack = { showsCouponRegistrationMethod = false }
-        )
-        return
-    }
 
     BackHandler { onClose() }
 
@@ -70,16 +63,20 @@ fun RegistrationTypeSelectionScreen(onClose: () -> Unit) {
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
-
-        // MARK: - Header
-
+        // MARK: - Header | 등록 화면 닫기
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = AppSpacing.screenHorizontal, vertical = AppSpacing.small),
+                .padding(
+                    horizontal = AppSpacing.xSmall,
+                    vertical = AppSpacing.small
+                ),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(onClick = onClose, modifier = Modifier.size(48.dp)) {
+            IconButton(
+                onClick = onClose,
+                modifier = Modifier.size(48.dp))
+            {
                 Icon(
                     painter = painterResource(R.drawable.ic_jnt_close),
                     contentDescription = "닫기",
@@ -92,21 +89,23 @@ fun RegistrationTypeSelectionScreen(onClose: () -> Unit) {
                 text = "유형 선택",
                 style = MaterialTheme.typography.titleMedium,
                 color = colors.textPrimary,
-                modifier = Modifier.weight(1f),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f)
             )
 
             Spacer(modifier = Modifier.size(48.dp))
         }
 
-        // MARK: - Content
-
+        // MARK: - Content | 유형 선택 및 기능 안내
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = AppSpacing.screenHorizontal)
-                .padding(top = AppSpacing.large, bottom = AppSpacing.xLarge),
+                .padding(
+                    top = AppSpacing.large,
+                    bottom = AppSpacing.xLarge
+                ),
             verticalArrangement = Arrangement.spacedBy(AppSpacing.sectionSpacing)
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.xSmall)) {
@@ -125,14 +124,12 @@ fun RegistrationTypeSelectionScreen(onClose: () -> Unit) {
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.cardSpacing)) {
-
                 RegistrationTypeCard(
                     title = "쿠폰·기프티콘",
                     subtitle = "상품 교환권, 할인 쿠폰",
                     iconRes = AppIcon.coupon,
-                    onClick = { showsCouponRegistrationMethod = true }
+                    onClick = onCouponSelected
                 )
-
 
                 RegistrationTypeCard(
                     title = "이용권",
@@ -170,7 +167,9 @@ fun RegistrationTypeSelectionScreen(onClose: () -> Unit) {
                 shape = RoundedCornerShape(AppRadius.card)
             ) {
                 Row(
-                    modifier = Modifier.fillMaxWidth().padding(AppSpacing.medium),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(AppSpacing.medium),
                     horizontalArrangement = Arrangement.spacedBy(AppSpacing.xSmall),
                     verticalAlignment = Alignment.Top
                 ) {
@@ -191,13 +190,14 @@ fun RegistrationTypeSelectionScreen(onClose: () -> Unit) {
         }
     }
 
-    // MARK: - Temporary Notice
-
+    // MARK: - Temporary Notice | 아직 미구현된 유형 안내
     if (showsNextStepNotice) {
         AlertDialog(
             onDismissRequest = { showsNextStepNotice = false },
             title = { Text("등록 화면 준비 중") },
-            text = { Text("$selectedTypeName 등록 화면은 다음 단계에서 연결할 예정이에요.") },
+            text = {
+                Text("$selectedTypeName 등록 화면은 다음 단계에서 연결할 예정이에요.")
+            },
             confirmButton = {
                 TextButton(onClick = { showsNextStepNotice = false }) {
                     Text("확인", color = colors.primaryForeground)
@@ -207,8 +207,7 @@ fun RegistrationTypeSelectionScreen(onClose: () -> Unit) {
     }
 }
 
-// MARK: - Registration Type Card
-
+// MARK: - Registration Type Card | 등록 유형 카드
 @Composable
 private fun RegistrationTypeCard(
     title: String,

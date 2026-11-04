@@ -1,4 +1,4 @@
-package com.geunho.jenaljettae.features.home
+package com.geunho.jenaljettae.features.home.views
 
 import android.view.ViewGroup
 import android.widget.NumberPicker
@@ -61,15 +61,16 @@ import java.util.Locale
 
 // MARK: - Calendar Events
 
+// MARK: - Calendar Event | 달력 표시용 항목 데이터
 data class CalendarEvent(
-    val id: Int,
+    val id: String,
     val title: String,
     val startDate: LocalDate,
     val endDate: LocalDate
 )
 
 private data class CalendarEventSegment(
-    val id: Int,
+    val id: String,
     val title: String,
     val startColumn: Int,
     val endColumn: Int,

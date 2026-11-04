@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "656348100170",
+    "project_id": "jenaljettae",
+    "storage_bucket": "jenaljettae.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:656348100170:android:d01bb11ffbe95e615258b3",
+        "android_client_info": {
+          "package_name": "com.geunho.jenaljettae"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAQlIl6WSNfTPBD5JgY1U3Zi5fqHHe6GB8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

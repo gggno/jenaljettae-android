@@ -23,6 +23,8 @@ import com.geunho.jenaljettae.ui.components.TypeFilter
 import com.geunho.jenaljettae.ui.theme.AppSpacing
 import com.geunho.jenaljettae.ui.theme.AppTheme
 import java.time.LocalDate
+import com.geunho.jenaljettae.features.home.views.MonthCalendar
+import com.geunho.jenaljettae.features.home.views.SelectedDateEventsView
 
 // MARK: - Home Screen | UI를 표시하고 사용자 동작을 ViewModel에 전달
 @Composable
