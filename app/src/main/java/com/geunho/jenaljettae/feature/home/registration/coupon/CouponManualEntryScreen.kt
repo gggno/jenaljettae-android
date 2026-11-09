@@ -63,6 +63,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.geunho.jenaljettae.R
 import com.geunho.jenaljettae.domain.model.CouponDraft
+import com.geunho.jenaljettae.features.home.registration.RegistrationImagePreview
+import com.geunho.jenaljettae.features.home.registration.RegistrationImageSection
 import com.geunho.jenaljettae.features.home.registration.LocalOnCouponSaved
 import com.geunho.jenaljettae.features.home.registration.LocalSaveCouponUseCase
 import com.geunho.jenaljettae.ui.theme.AppRadius
@@ -211,7 +213,8 @@ fun CouponManualEntryScreen(
             verticalArrangement = Arrangement.spacedBy(AppSpacing.large)
         ) {
             // MARK: - Coupon Image | 이미지 선택·변경·삭제 및 전체 화면 미리보기
-            CouponImageSection(
+            RegistrationImageSection(
+                itemName = "쿠폰",
                 imageUri = uiState.imageUri,
                 onImageSelected = { uri ->
                     registrationViewModel.setImageUri(uri)
@@ -494,7 +497,8 @@ fun CouponManualEntryScreen(
 
     // MARK: - Image Preview | 이미지 터치 시 전체 화면 미리보기 표시
     previewImageUri?.let { uri ->
-        CouponImagePreview(
+        RegistrationImagePreview(
+            itemName = "쿠폰",
             imageUri = uri,
             onDismiss = { previewImageUri = null }
         )

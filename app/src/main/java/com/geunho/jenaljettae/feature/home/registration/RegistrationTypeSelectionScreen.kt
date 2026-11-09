@@ -43,11 +43,14 @@ import com.geunho.jenaljettae.ui.theme.AppSpacing
 import com.geunho.jenaljettae.ui.theme.AppTheme
 import com.geunho.jenaljettae.ui.theme.AppTypography
 
-// MARK: - Registration Type Selection | 등록 유형 선택 및 이동 이벤트 전달
+// MARK: - Registration Type Selection | 등록 유형 선택
 @Composable
 fun RegistrationTypeSelectionScreen(
     onClose: () -> Unit,
-    onCouponSelected: () -> Unit
+    onCouponSelected: () -> Unit,
+    onPassSelected: (() -> Unit)? = null,
+    onSubscriptionSelected: (() -> Unit)? = null,
+    onScheduleSelected: (() -> Unit)? = null
 ) {
     val colors = AppTheme.colors
 
@@ -63,20 +66,13 @@ fun RegistrationTypeSelectionScreen(
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
-        // MARK: - Header | 등록 화면 닫기
+        // MARK: - Header | 유형 선택 화면
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(
-                    horizontal = AppSpacing.xSmall,
-                    vertical = AppSpacing.small
-                ),
+            modifier = Modifier.fillMaxWidth()
+                .padding(horizontal = AppSpacing.xSmall, vertical = AppSpacing.small),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            IconButton(
-                onClick = onClose,
-                modifier = Modifier.size(48.dp))
-            {
+            IconButton(onClick = onClose, modifier = Modifier.size(48.dp)) {
                 Icon(
                     painter = painterResource(R.drawable.ic_jnt_close),
                     contentDescription = "닫기",
@@ -96,16 +92,12 @@ fun RegistrationTypeSelectionScreen(
             Spacer(modifier = Modifier.size(48.dp))
         }
 
-        // MARK: - Content | 유형 선택 및 기능 안내
+        // MARK: - Content | 등록 유형 안내
         Column(
-            modifier = Modifier
-                .fillMaxSize()
+            modifier = Modifier.fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = AppSpacing.screenHorizontal)
-                .padding(
-                    top = AppSpacing.large,
-                    bottom = AppSpacing.xLarge
-                ),
+                .padding(top = AppSpacing.large, bottom = AppSpacing.xLarge),
             verticalArrangement = Arrangement.spacedBy(AppSpacing.sectionSpacing)
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.xSmall)) {
@@ -123,6 +115,7 @@ fun RegistrationTypeSelectionScreen(
                 )
             }
 
+            // MARK: - Cards | 각 등록 화면으로 이동
             Column(verticalArrangement = Arrangement.spacedBy(AppSpacing.cardSpacing)) {
                 RegistrationTypeCard(
                     title = "쿠폰·기프티콘",
@@ -136,40 +129,49 @@ fun RegistrationTypeSelectionScreen(
                     subtitle = "기간제 구독권, 기간권",
                     iconRes = AppIcon.pass,
                     onClick = {
-                        selectedTypeName = "이용권"
-                        showsNextStepNotice = true
+                        if (onPassSelected != null) onPassSelected()
+                        else {
+                            selectedTypeName = "이용권"
+                            showsNextStepNotice = true
+                        }
                     }
                 )
 
                 RegistrationTypeCard(
                     title = "정기 구독",
-                    subtitle = "매월·매년 반복되는 갱신",
+                    subtitle = "매월·2·3·6개월·매년 반복 갱신",
                     iconRes = AppIcon.subscription,
                     onClick = {
-                        selectedTypeName = "정기 구독"
-                        showsNextStepNotice = true
+                        if (onSubscriptionSelected != null) onSubscriptionSelected()
+                        else {
+                            selectedTypeName = "정기 구독"
+                            showsNextStepNotice = true
+                        }
                     }
                 )
 
+                // MARK: - Schedule | 일정 등록 화면으로 이동
                 RegistrationTypeCard(
                     title = "일정",
                     subtitle = "식당, 병원, 미용실, 숙박",
                     iconRes = AppIcon.schedule,
                     onClick = {
-                        selectedTypeName = "일정"
-                        showsNextStepNotice = true
+                        if (onScheduleSelected != null) onScheduleSelected()
+                        else {
+                            selectedTypeName = "일정"
+                            showsNextStepNotice = true
+                        }
                     }
                 )
             }
 
+            // MARK: - Notice | 이용권과 정기 구독의 차이
             Surface(
                 color = colors.primaryTint,
                 shape = RoundedCornerShape(AppRadius.card)
             ) {
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(AppSpacing.medium),
+                    modifier = Modifier.fillMaxWidth().padding(AppSpacing.medium),
                     horizontalArrangement = Arrangement.spacedBy(AppSpacing.xSmall),
                     verticalAlignment = Alignment.Top
                 ) {
@@ -190,14 +192,12 @@ fun RegistrationTypeSelectionScreen(
         }
     }
 
-    // MARK: - Temporary Notice | 아직 미구현된 유형 안내
+    // MARK: - Temporary Notice | 미연결 유형 안내
     if (showsNextStepNotice) {
         AlertDialog(
             onDismissRequest = { showsNextStepNotice = false },
             title = { Text("등록 화면 준비 중") },
-            text = {
-                Text("$selectedTypeName 등록 화면은 다음 단계에서 연결할 예정이에요.")
-            },
+            text = { Text("$selectedTypeName 등록 화면은 다음 단계에서 연결할 예정이에요.") },
             confirmButton = {
                 TextButton(onClick = { showsNextStepNotice = false }) {
                     Text("확인", color = colors.primaryForeground)
@@ -207,7 +207,7 @@ fun RegistrationTypeSelectionScreen(
     }
 }
 
-// MARK: - Registration Type Card | 등록 유형 카드
+// MARK: - Registration Type Card | 공통 유형 선택 카드
 @Composable
 private fun RegistrationTypeCard(
     title: String,

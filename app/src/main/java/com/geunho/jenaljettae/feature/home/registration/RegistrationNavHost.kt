@@ -1,6 +1,10 @@
 package com.geunho.jenaljettae.features.home.registration
 
 import android.net.Uri
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -8,7 +12,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavBackStackEntry
@@ -23,22 +26,24 @@ import com.geunho.jenaljettae.domain.usecase.AnalyzeCouponImageUseCase
 import com.geunho.jenaljettae.features.home.registration.coupon.CouponImageRecognitionScreen
 import com.geunho.jenaljettae.features.home.registration.coupon.CouponManualEntryScreen
 import com.geunho.jenaljettae.features.home.registration.coupon.CouponRegistrationMethodScreen
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
-import androidx.compose.foundation.background
+import com.geunho.jenaljettae.features.home.registration.pass.PassManualEntryScreen
+import com.geunho.jenaljettae.features.home.registration.subscription.SubscriptionManualEntryScreen
+import com.geunho.jenaljettae.features.home.registration.schedule.ScheduleManualEntryScreen
 import com.geunho.jenaljettae.ui.theme.AppTheme
 
-
-// MARK: - Registration Routes | 등록 화면의 이동 경로 정의
+// MARK: - Registration Routes | 등록 화면 경로
 private object RegistrationRoute {
     const val GRAPH = "registration"
     const val TYPE = "registration/type"
     const val METHOD = "registration/method"
     const val RECOGNITION = "registration/recognition"
     const val MANUAL = "registration/manual"
+    const val PASS_MANUAL = "registration/pass/manual"
+    const val SUBSCRIPTION_MANUAL = "registration/subscription/manual"
+    const val SCHEDULE_MANUAL = "registration/schedule/manual"
 }
 
-// MARK: - Registration Flow ViewModel | 등록 중 이미지와 AI 분석 결과 공유
+// MARK: - Registration Flow ViewModel | 기존 AI 쿠폰 분석 상태
 class RegistrationFlowViewModel : ViewModel() {
     var imageData by mutableStateOf<ByteArray?>(null)
         private set
@@ -55,9 +60,7 @@ class RegistrationFlowViewModel : ViewModel() {
         couponDraft = null
     }
 
-    fun completeAnalysis(draft: CouponDraft) {
-        couponDraft = draft
-    }
+    fun completeAnalysis(draft: CouponDraft) { couponDraft = draft }
 
     fun startManualEntry() {
         imageData = null
@@ -66,7 +69,7 @@ class RegistrationFlowViewModel : ViewModel() {
     }
 }
 
-// MARK: - Registration Flow ViewModel Scope | 등록 그래프 전체에서 동일한 ViewModel 사용
+// MARK: - Registration Flow ViewModel Scope | 등록 그래프 내 ViewModel 공유
 @Composable
 private fun registrationFlowViewModel(
     navController: NavHostController,
@@ -79,12 +82,11 @@ private fun registrationFlowViewModel(
     return viewModel(viewModelStoreOwner = graphEntry)
 }
 
-// MARK: - Registration Nav Host | iOS NavigationStack처럼 등록 화면 백스택 관리
+// MARK: - Registration Nav Host | 등록 화면 내비게이션
 @Composable
 fun RegistrationNavHost(onClose: () -> Unit) {
     val navController = rememberNavController()
 
-    // MARK: - AI Dependencies | 실제 Gemini 분석 Repository와 UseCase 연결
     val analyzeCouponImageUseCase = remember {
         AnalyzeCouponImageUseCase(
             repository = GeminiCouponAnalysisRepository(
@@ -96,15 +98,12 @@ fun RegistrationNavHost(onClose: () -> Unit) {
     NavHost(
         navController = navController,
         startDestination = RegistrationRoute.GRAPH,
-        modifier = Modifier
-            .fillMaxSize()
-            .background(AppTheme.colors.background),
+        modifier = Modifier.fillMaxSize().background(AppTheme.colors.background),
         enterTransition = { EnterTransition.None },
         exitTransition = { ExitTransition.None },
         popEnterTransition = { EnterTransition.None },
         popExitTransition = { ExitTransition.None }
     ) {
-        // MARK: - Registration Graph | 등록 흐름의 공통 백스택 범위
         navigation(
             startDestination = RegistrationRoute.TYPE,
             route = RegistrationRoute.GRAPH
@@ -115,11 +114,20 @@ fun RegistrationNavHost(onClose: () -> Unit) {
                     onClose = onClose,
                     onCouponSelected = {
                         navController.navigate(RegistrationRoute.METHOD)
+                    },
+                    onPassSelected = {
+                        navController.navigate(RegistrationRoute.PASS_MANUAL)
+                    },
+                    onSubscriptionSelected = {
+                        navController.navigate(RegistrationRoute.SUBSCRIPTION_MANUAL)
+                    },
+                    onScheduleSelected = {
+                        navController.navigate(RegistrationRoute.SCHEDULE_MANUAL)
                     }
                 )
             }
 
-            // MARK: - Registration Method | 직접 입력 또는 AI 이미지 선택
+            // MARK: - Coupon Registration Method | 등록 방식 선택
             composable(RegistrationRoute.METHOD) { entry ->
                 val flowViewModel = registrationFlowViewModel(navController, entry)
 
@@ -136,7 +144,7 @@ fun RegistrationNavHost(onClose: () -> Unit) {
                 )
             }
 
-            // MARK: - Image Recognition | Gemini 분석 후 다음 화면 Push
+            // MARK: - Coupon Recognition | AI 분석
             composable(RegistrationRoute.RECOGNITION) { entry ->
                 val flowViewModel = registrationFlowViewModel(navController, entry)
                 val imageData = flowViewModel.imageData
@@ -152,12 +160,11 @@ fun RegistrationNavHost(onClose: () -> Unit) {
                         }
                     )
                 } else {
-                    // MARK: - Missing Image | 이미지 상태가 없으면 이전 화면으로 복귀
                     LaunchedEffect(Unit) { navController.popBackStack() }
                 }
             }
 
-            // MARK: - Coupon Manual Entry | AI 분석 정보와 원본 이미지 전달
+            // MARK: - Coupon Manual | 쿠폰 직접 입력
             composable(RegistrationRoute.MANUAL) { entry ->
                 val flowViewModel = registrationFlowViewModel(navController, entry)
 
@@ -170,6 +177,21 @@ fun RegistrationNavHost(onClose: () -> Unit) {
                         null
                     }
                 )
+            }
+
+            // MARK: - Pass | 이용권 등록
+            composable(RegistrationRoute.PASS_MANUAL) {
+                PassManualEntryScreen(onBack = { navController.popBackStack() })
+            }
+
+            // MARK: - Subscription | 정기 구독 등록
+            composable(RegistrationRoute.SUBSCRIPTION_MANUAL) {
+                SubscriptionManualEntryScreen(onBack = { navController.popBackStack() })
+            }
+
+            // MARK: - Schedule | 일정 등록
+            composable(RegistrationRoute.SCHEDULE_MANUAL) {
+                ScheduleManualEntryScreen(onBack = { navController.popBackStack() })
             }
         }
     }

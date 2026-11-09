@@ -1,4 +1,4 @@
-package com.geunho.jenaljettae.features.home.registration.coupon
+package com.geunho.jenaljettae.features.home.registration
 
 import android.net.Uri
 import androidx.compose.foundation.Image
@@ -55,9 +55,10 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import com.geunho.jenaljettae.R
 
-// MARK: - Coupon Image Preview | iOS와 동일한 쿠폰 이미지 확대·이동·닫기 화면
+// MARK: - Registration Image Preview | iOS와 동일한 쿠폰 이미지 확대·이동·닫기 화면
 @Composable
-fun CouponImagePreview(
+fun RegistrationImagePreview(
+    itemName: String,
     imageUri: String,
     onDismiss: () -> Unit
 ) {
@@ -124,7 +125,7 @@ fun CouponImagePreview(
             ) {
                 val availableWidth = maxWidth
                 val availableHeight = maxHeight
-                val dismissThreshold = with(LocalDensity.current) { 120.dp.toPx() } 
+                val dismissThreshold = with(LocalDensity.current) { 120.dp.toPx() }
 
                 Box(
                     modifier = Modifier
@@ -213,7 +214,7 @@ fun CouponImagePreview(
                     // MARK: - Image Loading | 원본 비율로 표시하고 이미지 자체에 라운드 적용
                     SubcomposeAsyncImage(
                         model = Uri.parse(imageUri),
-                        contentDescription = "쿠폰 이미지 확대 보기",
+                        contentDescription = "${itemName} 이미지 확대 보기",
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Fit,
                         loading = {
@@ -246,7 +247,7 @@ fun CouponImagePreview(
                             ) {
                                 Image(
                                     painter = state.painter,
-                                    contentDescription = "쿠폰 이미지",
+                                    contentDescription = "${itemName} 이미지",
                                     modifier = Modifier
                                         .size(imageWidth, imageHeight)
                                         .onSizeChanged { displayedImageSize = it }

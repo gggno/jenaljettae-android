@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.geunho.jenaljettae.domain.model.ManagedItem
 import com.geunho.jenaljettae.domain.model.ManagedItemType
 import com.geunho.jenaljettae.domain.repository.ManagedItemRepository
+import com.geunho.jenaljettae.features.home.views.CalendarEvent
+import com.geunho.jenaljettae.features.home.views.HomeSampleEvent
 import com.geunho.jenaljettae.ui.components.ItemTypeFilter
 import com.geunho.jenaljettae.ui.theme.AppIcon
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -13,11 +15,12 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.text.NumberFormat
 import java.time.LocalDate
-import com.geunho.jenaljettae.features.home.views.CalendarEvent
-import com.geunho.jenaljettae.features.home.views.HomeSampleEvent
+import java.time.YearMonth
+import java.util.Locale
 
-// MARK: - Home UI State | 홈 화면에서 관찰하는 상태 정의
+// MARK: - Home UI State | 홈 필터·달력·선택 날짜
 data class HomeUiState(
     val selectedType: ItemTypeFilter,
     val visibleMonth: LocalDate,
@@ -25,7 +28,7 @@ data class HomeUiState(
     val items: List<ManagedItem>
 )
 
-// MARK: - Home ViewModel | 홈 상태·필터·달력 이동 및 저장 데이터 관찰
+// MARK: - Home ViewModel | 저장 데이터 및 달력 표시 관리
 class HomeViewModel(
     private val repository: ManagedItemRepository
 ) : ViewModel() {
@@ -41,7 +44,7 @@ class HomeViewModel(
     )
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
-    // MARK: - Observe Items | Room 데이터 변경 시 홈 목록 갱신
+    // MARK: - Observe Items | Room 데이터 변경 관찰
     init {
         viewModelScope.launch {
             repository.observeItems().collect { items ->
@@ -50,33 +53,73 @@ class HomeViewModel(
         }
     }
 
-    // MARK: - Calendar Events | 항목별 표시 날짜를 달력 이벤트로 변환
+    // MARK: - Calendar Events | 달력에 표시할 이벤트 생성
     val calendarEvents: List<CalendarEvent>
-        get() = typeFilteredItems().map { item ->
-            val (startDate, endDate) = displayRange(item)
+        get() {
+            val month = YearMonth.from(_uiState.value.visibleMonth)
 
-            CalendarEvent(
-                id = item.id,
-                title = item.title,
-                startDate = startDate,
-                endDate = endDate
-            )
+            return typeFilteredItems().flatMap { item ->
+                if (item.type == ManagedItemType.SUBSCRIPTION) {
+                    val cycle = item.subscriptionCycle ?: return@flatMap emptyList()
+
+                    (-1..1).mapNotNull { offset ->
+                        val date = cycle.billingDate(
+                            item.startDate,
+                            month.plusMonths(offset.toLong())
+                        ) ?: return@mapNotNull null
+
+                        CalendarEvent(
+                            id = "${item.id}:$date",
+                            title = item.title,
+                            startDate = date,
+                            endDate = date
+                        )
+                    }
+                } else {
+                    val (start, end) = displayRange(item)
+
+                    listOf(
+                        CalendarEvent(
+                            id = item.id,
+                            title = item.title,
+                            startDate = start,
+                            endDate = end
+                        )
+                    )
+                }
+            }
         }
 
-    // MARK: - Filtered Events | 선택 날짜에 해당하는 일정만 표시
+    // MARK: - Filtered Events | 선택한 날짜의 항목
     internal val filteredEvents: List<HomeSampleEvent>
         get() {
             val selectedDate = _uiState.value.selectedDate
 
-            return typeFilteredItems()
-                .filter { item ->
-                    val (startDate, endDate) = displayRange(item)
-                    !selectedDate.isBefore(startDate) && !selectedDate.isAfter(endDate)
+            return typeFilteredItems().mapNotNull { item ->
+                if (item.type == ManagedItemType.SUBSCRIPTION) {
+                    val billingDate = item.subscriptionCycle?.billingDate(
+                        item.startDate,
+                        YearMonth.from(selectedDate)
+                    )
+
+                    if (billingDate == selectedDate) {
+                        makeHomeEvent(item, billingDate)
+                    } else {
+                        null
+                    }
+                } else {
+                    val (start, end) = displayRange(item)
+
+                    if (!selectedDate.isBefore(start) && !selectedDate.isAfter(end)) {
+                        makeHomeEvent(item, selectedDate)
+                    } else {
+                        null
+                    }
                 }
-                .map { makeHomeEvent(it) }
+            }
         }
 
-    // MARK: - Reload | 필요한 경우 Repository에서 데이터를 다시 조회
+    // MARK: - Reload | 필요할 때 Room 다시 조회
     fun reload() {
         viewModelScope.launch {
             val items = repository.fetchItems()
@@ -84,17 +127,15 @@ class HomeViewModel(
         }
     }
 
-    // MARK: - Select Type | 선택한 유형으로 목록 필터링
+    // MARK: - Filter & Date | 홈 날짜·필터 변경
     fun selectType(type: ItemTypeFilter) {
         _uiState.update { it.copy(selectedType = type) }
     }
 
-    // MARK: - Select Date | 달력에서 선택한 날짜 변경
     fun selectDate(date: LocalDate) {
         _uiState.update { it.copy(selectedDate = date) }
     }
 
-    // MARK: - Change Month | 선택 날짜를 유지하며 표시 월 변경
     fun changeMonth(month: LocalDate) {
         val monthStart = month.withDayOfMonth(1)
 
@@ -107,10 +148,8 @@ class HomeViewModel(
         }
     }
 
-    // MARK: - Move To Today | 오늘 날짜와 현재 월로 이동
     fun moveToToday() {
         val currentDate = LocalDate.now()
-
         _uiState.update {
             it.copy(
                 visibleMonth = currentDate.withDayOfMonth(1),
@@ -119,7 +158,6 @@ class HomeViewModel(
         }
     }
 
-    // MARK: - Pick Date | 선택 날짜와 표시 월을 함께 변경
     fun pickDate(date: LocalDate) {
         _uiState.update {
             it.copy(
@@ -129,7 +167,7 @@ class HomeViewModel(
         }
     }
 
-    // MARK: - Type Filter | Domain 항목 유형을 화면 필터로 변환
+    // MARK: - Type Filtering | 항목 유형 필터링
     private fun typeFilteredItems(): List<ManagedItem> {
         val state = _uiState.value
         return state.items.filter {
@@ -144,9 +182,9 @@ class HomeViewModel(
         ManagedItemType.SCHEDULE -> ItemTypeFilter.SCHEDULE
     }
 
-    // MARK: - Display Range | 쿠폰은 만료일, 다른 항목은 시작일~종료일 표시
+    // MARK: - Display Range | 쿠폰·이용권은 만료일, 일정은 전체 기간
     private fun displayRange(item: ManagedItem): Pair<LocalDate, LocalDate> {
-        if (item.type == ManagedItemType.COUPON) {
+        if (item.type == ManagedItemType.COUPON || item.type == ManagedItemType.PASS) {
             val expiryDate = item.endDate ?: item.startDate
             return expiryDate to expiryDate
         }
@@ -154,10 +192,9 @@ class HomeViewModel(
         return item.startDate to (item.endDate ?: item.startDate)
     }
 
-    // MARK: - Event Mapping | Domain 항목을 홈 카드 모델로 변환
-    private fun makeHomeEvent(item: ManagedItem): HomeSampleEvent {
+    // MARK: - Home Event | 선택일 카드 데이터 구성
+    private fun makeHomeEvent(item: ManagedItem, eventDate: LocalDate): HomeSampleEvent {
         val type = filterType(item.type)
-        val (displayDate, _) = displayRange(item)
 
         val iconRes = when (item.type) {
             ManagedItemType.COUPON -> AppIcon.coupon
@@ -166,23 +203,51 @@ class HomeViewModel(
             ManagedItemType.SCHEDULE -> AppIcon.schedule
         }
 
+        val subtitle = when (item.type) {
+            ManagedItemType.SUBSCRIPTION -> {
+                val cycle = item.subscriptionCycle?.title ?: type.title
+                val amount = item.subscriptionAmount?.let {
+                    " · ${NumberFormat.getIntegerInstance(Locale.KOREA).format(it)}원"
+                } ?: ""
+
+                "${type.title} · $cycle$amount"
+            }
+
+            ManagedItemType.SCHEDULE -> {
+                val time = item.scheduleTimeMinutes?.let {
+                    "%02d:%02d".format(it / 60, it % 60)
+                }
+
+                listOfNotNull(
+                    type.title,
+                    time,
+                    item.detail.takeIf { it.isNotBlank() }
+                ).joinToString(" · ")
+            }
+
+            else -> "${type.title} · ${item.detail}"
+        }
+
         val currentDate = LocalDate.now()
+
         val statusLabel = when {
-            item.type != ManagedItemType.COUPON && item.endDate != null -> "예정"
-            displayDate == currentDate -> "오늘"
-            displayDate == currentDate.plusDays(1) -> "내일"
+            eventDate == currentDate -> "오늘"
+            eventDate == currentDate.plusDays(1) -> "내일"
             else -> "예정"
         }
 
         return HomeSampleEvent(
             id = item.id,
-            date = displayDate,
+            date = eventDate,
             type = type,
             title = item.title,
-            subtitle = "${type.title} · ${item.detail}",
+            subtitle = subtitle,
             iconRes = iconRes,
             statusLabel = statusLabel,
-            endDate = if (item.type == ManagedItemType.COUPON) null else item.endDate
+            endDate = if (
+                item.type == ManagedItemType.COUPON ||
+                item.type == ManagedItemType.SUBSCRIPTION
+            ) null else item.endDate
         )
     }
 }

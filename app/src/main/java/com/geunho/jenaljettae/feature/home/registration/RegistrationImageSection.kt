@@ -1,4 +1,4 @@
-package com.geunho.jenaljettae.features.home.registration.coupon
+package com.geunho.jenaljettae.features.home.registration
 
 import android.graphics.BitmapFactory
 import android.net.Uri
@@ -46,9 +46,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-// MARK: - Coupon Image Section | 쿠폰 이미지 선택·변경·삭제 UI
+// MARK: - Registration Image Section | 쿠폰 이미지 선택·변경·삭제 UI
 @Composable
-fun CouponImageSection(
+fun RegistrationImageSection(
+    itemName: String,
     imageUri: String?,
     onImageSelected: (String) -> Unit,
     onRemoveImage: () -> Unit,
@@ -110,7 +111,7 @@ fun CouponImageSection(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            text = "쿠폰 이미지 (선택)",
+            text = "${itemName} 이미지 (선택)",
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurface
         )
@@ -141,7 +142,7 @@ fun CouponImageSection(
                         )
 
                         Text(
-                            text = "쿠폰 이미지 추가",
+                            text = "${itemName} 이미지 추가",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -168,7 +169,7 @@ fun CouponImageSection(
 
                 SubcomposeAsyncImage(
                     model = Uri.parse(imageUri),
-                    contentDescription = "선택한 쿠폰 이미지",
+                    contentDescription = "선택한 ${itemName} 이미지",
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Fit,
                     loading = {
@@ -187,7 +188,7 @@ fun CouponImageSection(
 
                                 Image(
                                     painter = state.painter,
-                                    contentDescription = "선택한 쿠폰 이미지",
+                                    contentDescription = "선택한 ${itemName} 이미지",
                                     modifier = Modifier
                                         .size(displayWidth, displayHeight)
                                         .clip(imageShape)
@@ -197,7 +198,7 @@ fun CouponImageSection(
                             } else {
                                 Image(
                                     painter = state.painter,
-                                    contentDescription = "선택한 쿠폰 이미지",
+                                    contentDescription = "선택한 ${itemName} 이미지",
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .clip(imageShape)

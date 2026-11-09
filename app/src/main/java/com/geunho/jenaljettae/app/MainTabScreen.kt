@@ -34,25 +34,46 @@ import com.geunho.jenaljettae.data.repository.RoomManagedItemRepository
 import com.geunho.jenaljettae.data.repository.SampleManagedItemRepository
 import com.geunho.jenaljettae.domain.model.ManagedItem
 import com.geunho.jenaljettae.domain.usecase.SaveCouponUseCase
+import com.geunho.jenaljettae.domain.usecase.SavePassUseCase
+import com.geunho.jenaljettae.domain.usecase.SaveSubscriptionUseCase
+import com.geunho.jenaljettae.domain.usecase.SaveScheduleUseCase
 import com.geunho.jenaljettae.features.home.HomeScreen
 import com.geunho.jenaljettae.features.home.HomeViewModel
 import com.geunho.jenaljettae.features.home.registration.LocalOnCouponSaved
+import com.geunho.jenaljettae.features.home.registration.LocalOnPassSaved
+import com.geunho.jenaljettae.features.home.registration.LocalOnSubscriptionSaved
+import com.geunho.jenaljettae.features.home.registration.LocalOnScheduleSaved
 import com.geunho.jenaljettae.features.home.registration.LocalSaveCouponUseCase
+import com.geunho.jenaljettae.features.home.registration.LocalSavePassUseCase
+import com.geunho.jenaljettae.features.home.registration.LocalSaveSubscriptionUseCase
+import com.geunho.jenaljettae.features.home.registration.LocalSaveScheduleUseCase
 import com.geunho.jenaljettae.features.home.registration.RegistrationNavHost
 import com.geunho.jenaljettae.ui.theme.AppIcon
 import com.geunho.jenaljettae.ui.theme.AppSpacing
 import com.geunho.jenaljettae.ui.theme.AppTheme
 import com.geunho.jenaljettae.ui.theme.AppTypography
 import com.geunho.jenaljettae.ui.theme.JENALJETTAETheme
+import java.time.LocalDate
 
-// MARK: - Main Tab | 하단 탭과 아이콘 정의
-private enum class MainTab(val title: String, @DrawableRes val iconRes: Int) {
+// MARK: - Registration Dependencies | 네 유형의 저장 UseCase 관리
+private data class RegistrationDependencies(
+    val coupon: SaveCouponUseCase,
+    val pass: SavePassUseCase,
+    val subscription: SaveSubscriptionUseCase,
+    val schedule: SaveScheduleUseCase
+)
+
+// MARK: - Main Tab | 탭 정보
+private enum class MainTab(
+    val title: String,
+    @DrawableRes val iconRes: Int
+) {
     HOME("홈", AppIcon.home),
     LIBRARY("보관함", AppIcon.vault),
     SETTINGS("설정", AppIcon.settings)
 }
 
-// MARK: - Main Tab Screen | 탭 이동과 Room Repository 연결
+// MARK: - Main Tab Screen | 탭 및 등록 화면 연결
 @Composable
 fun MainTabScreen(
     homeViewModel: HomeViewModel = viewModel(
@@ -62,8 +83,7 @@ fun MainTabScreen(
                     this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]
                 )
                 val database = AppDatabase.getInstance(application)
-                val repository = RoomManagedItemRepository(database.managedItemDao())
-                HomeViewModel(repository)
+                HomeViewModel(RoomManagedItemRepository(database.managedItemDao()))
             }
         }
     )
@@ -72,32 +92,80 @@ fun MainTabScreen(
     var showsRegistrationTypeSelection by rememberSaveable { mutableStateOf(false) }
     val colors = AppTheme.colors
 
-    // MARK: - Registration | 저장 UseCase와 완료 콜백을 등록 NavHost에 제공
+    // MARK: - Registration | UseCase 및 저장 완료 콜백
     if (showsRegistrationTypeSelection) {
         val context = LocalContext.current.applicationContext
-        val saveCouponUseCase = remember(context) {
+
+        val useCases = remember(context) {
             val database = AppDatabase.getInstance(context)
             val repository = RoomManagedItemRepository(database.managedItemDao())
-            val imageStorage = CouponImageStorage(context)
-            val imageRepository = LocalCouponImageRepository(imageStorage)
+            val imageRepository = LocalCouponImageRepository(CouponImageStorage(context))
 
-            SaveCouponUseCase(repository, imageRepository)
+            RegistrationDependencies(
+                coupon = SaveCouponUseCase(repository, imageRepository),
+                pass = SavePassUseCase(repository, imageRepository),
+                subscription = SaveSubscriptionUseCase(repository, imageRepository),
+                schedule = SaveScheduleUseCase(repository, imageRepository)
+            )
         }
 
+        // MARK: - Coupon Saved | 쿠폰 만료일로 이동
         val onCouponSaved: (ManagedItem) -> Unit = { savedItem ->
             homeViewModel.pickDate(savedItem.endDate ?: savedItem.startDate)
             selectedTab = MainTab.HOME
             showsRegistrationTypeSelection = false
         }
 
+        // MARK: - Pass Saved | 이용권 종료일로 이동
+        val onPassSaved: (ManagedItem) -> Unit = { savedItem ->
+            homeViewModel.pickDate(savedItem.endDate ?: savedItem.startDate)
+            selectedTab = MainTab.HOME
+            showsRegistrationTypeSelection = false
+        }
+
+        // MARK: - Subscription Saved | 시작일 또는 다음 반복 결제일로 이동
+        val onSubscriptionSaved: (ManagedItem) -> Unit = { savedItem ->
+            val today = LocalDate.now()
+
+            val targetDate = if (!savedItem.startDate.isBefore(today)) {
+                savedItem.startDate
+            } else {
+                savedItem.subscriptionCycle?.upcomingBillingDates(
+                    startDate = savedItem.startDate,
+                    count = 1,
+                    referenceDate = today,
+                    includeStartDate = false
+                )?.firstOrNull() ?: savedItem.startDate
+            }
+
+            homeViewModel.pickDate(targetDate)
+            selectedTab = MainTab.HOME
+            showsRegistrationTypeSelection = false
+        }
+
+        // MARK: - Schedule Saved | 일정 시작일로 이동
+        val onScheduleSaved: (ManagedItem) -> Unit = { savedItem ->
+            homeViewModel.pickDate(savedItem.startDate)
+            selectedTab = MainTab.HOME
+            showsRegistrationTypeSelection = false
+        }
+
+        // MARK: - Dependency Injection | Compose CompositionLocal
         CompositionLocalProvider(
-            LocalSaveCouponUseCase provides saveCouponUseCase,
-            LocalOnCouponSaved provides onCouponSaved
+            LocalSaveCouponUseCase provides useCases.coupon,
+            LocalOnCouponSaved provides onCouponSaved,
+            LocalSavePassUseCase provides useCases.pass,
+            LocalOnPassSaved provides onPassSaved,
+            LocalSaveSubscriptionUseCase provides useCases.subscription,
+            LocalOnSubscriptionSaved provides onSubscriptionSaved,
+            LocalSaveScheduleUseCase provides useCases.schedule,
+            LocalOnScheduleSaved provides onScheduleSaved
         ) {
             RegistrationNavHost(
                 onClose = { showsRegistrationTypeSelection = false }
             )
         }
+
         return
     }
 
@@ -105,7 +173,7 @@ fun MainTabScreen(
         modifier = Modifier.fillMaxSize(),
         containerColor = colors.background,
         bottomBar = {
-            // MARK: - Bottom Navigation | 기존 하단 탭바 디자인 유지
+            // MARK: - Bottom Navigation | 기존 하단 탭바
             Column {
                 NavigationBar(containerColor = colors.card) {
                     MainTab.entries.forEach { tab ->
@@ -133,7 +201,7 @@ fun MainTabScreen(
             }
         }
     ) { innerPadding ->
-        // MARK: - Selected Tab | 선택한 탭의 화면 표시
+        // MARK: - Selected Tab | 선택한 화면 표시
         when (selectedTab) {
             MainTab.HOME -> HomeScreen(
                 viewModel = homeViewModel,
@@ -149,9 +217,12 @@ fun MainTabScreen(
     }
 }
 
-// MARK: - Temporary Tab Screen | 보관함·설정 준비 중 화면
+// MARK: - Temporary Tab Screen | 보관함·설정 임시 화면
 @Composable
-private fun TabPlaceholderScreen(title: String, modifier: Modifier = Modifier) {
+private fun TabPlaceholderScreen(
+    title: String,
+    modifier: Modifier = Modifier
+) {
     val colors = AppTheme.colors
 
     Column(
@@ -178,20 +249,23 @@ private fun TabPlaceholderScreen(title: String, modifier: Modifier = Modifier) {
     }
 }
 
-// MARK: - Light Preview | 라이트 모드 미리보기
+// MARK: - Previews | 라이트·다크 모드
 @Preview(name = "Light", showBackground = true)
 @Composable
 private fun MainTabLightPreview() {
     JENALJETTAETheme(darkTheme = false) {
-        MainTabScreen(homeViewModel = HomeViewModel(SampleManagedItemRepository()))
+        MainTabScreen(
+            homeViewModel = HomeViewModel(SampleManagedItemRepository())
+        )
     }
 }
 
-// MARK: - Dark Preview | 다크 모드 미리보기
 @Preview(name = "Dark", showBackground = true)
 @Composable
 private fun MainTabDarkPreview() {
     JENALJETTAETheme(darkTheme = true) {
-        MainTabScreen(homeViewModel = HomeViewModel(SampleManagedItemRepository()))
+        MainTabScreen(
+            homeViewModel = HomeViewModel(SampleManagedItemRepository())
+        )
     }
 }
