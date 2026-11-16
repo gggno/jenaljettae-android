@@ -39,6 +39,8 @@ import com.geunho.jenaljettae.domain.usecase.SaveSubscriptionUseCase
 import com.geunho.jenaljettae.domain.usecase.SaveScheduleUseCase
 import com.geunho.jenaljettae.features.home.HomeScreen
 import com.geunho.jenaljettae.features.home.HomeViewModel
+import com.geunho.jenaljettae.features.home.detail.ManagedItemDetailScreen
+import com.geunho.jenaljettae.features.home.detail.ManagedItemDetailViewModel
 import com.geunho.jenaljettae.features.home.registration.LocalOnCouponSaved
 import com.geunho.jenaljettae.features.home.registration.LocalOnPassSaved
 import com.geunho.jenaljettae.features.home.registration.LocalOnSubscriptionSaved
@@ -90,6 +92,7 @@ fun MainTabScreen(
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(MainTab.HOME) }
     var showsRegistrationTypeSelection by rememberSaveable { mutableStateOf(false) }
+    var selectedItemId by rememberSaveable { mutableStateOf<String?>(null) }
     val colors = AppTheme.colors
 
     // MARK: - Registration | UseCase 및 저장 완료 콜백
@@ -173,48 +176,73 @@ fun MainTabScreen(
         modifier = Modifier.fillMaxSize(),
         containerColor = colors.background,
         bottomBar = {
-            // MARK: - Bottom Navigation | 기존 하단 탭바
-            Column {
-                NavigationBar(containerColor = colors.card) {
-                    MainTab.entries.forEach { tab ->
-                        NavigationBarItem(
-                            selected = selectedTab == tab,
-                            onClick = { selectedTab = tab },
-                            icon = {
-                                Icon(
-                                    painter = painterResource(tab.iconRes),
-                                    contentDescription = null
+            // MARK: - Bottom Navigation | 상세화면에서는 탭바 숨김
+            if (selectedItemId == null) {
+                Column {
+                    NavigationBar(containerColor = colors.card) {
+                        MainTab.entries.forEach { tab ->
+                            NavigationBarItem(
+                                selected = selectedTab == tab,
+                                onClick = { selectedTab = tab; selectedItemId = null },
+                                icon = {
+                                    Icon(
+                                        painter = painterResource(tab.iconRes),
+                                        contentDescription = null
+                                    )
+                                },
+                                label = { Text(tab.title) },
+                                alwaysShowLabel = true,
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = colors.primaryForeground,
+                                    selectedTextColor = colors.primaryForeground,
+                                    indicatorColor = colors.primaryTint,
+                                    unselectedIconColor = colors.textSecondary,
+                                    unselectedTextColor = colors.textSecondary
                                 )
-                            },
-                            label = { Text(tab.title) },
-                            alwaysShowLabel = true,
-                            colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = colors.primaryForeground,
-                                selectedTextColor = colors.primaryForeground,
-                                indicatorColor = colors.primaryTint,
-                                unselectedIconColor = colors.textSecondary,
-                                unselectedTextColor = colors.textSecondary
                             )
-                        )
+                        }
                     }
                 }
             }
         }
     ) { innerPadding ->
-        // MARK: - Selected Tab | 선택한 화면 표시
-        when (selectedTab) {
-            MainTab.HOME -> HomeScreen(
-                viewModel = homeViewModel,
+        // MARK: - Detail Destination | 홈 항목 상세화면, 하단 탭 숨김
+        val itemId = selectedItemId
+        if (selectedTab == MainTab.HOME && itemId != null) {
+            ManagedItemDetailDestination(
+                itemId = itemId,
                 modifier = Modifier.padding(innerPadding),
-                onAdd = { showsRegistrationTypeSelection = true }
+                onBack = { selectedItemId = null }
             )
+        } else {
+            // MARK: - Selected Tab | 기존 홈 및 임시 탭
+            when (selectedTab) {
+                MainTab.HOME -> HomeScreen(
+                    viewModel = homeViewModel,
+                    modifier = Modifier.padding(innerPadding),
+                    onAdd = { showsRegistrationTypeSelection = true },
+                    onOpenDetail = { selectedItemId = it }
+                )
 
-            MainTab.LIBRARY, MainTab.SETTINGS -> TabPlaceholderScreen(
-                title = selectedTab.title,
-                modifier = Modifier.padding(innerPadding)
-            )
+                MainTab.LIBRARY, MainTab.SETTINGS -> TabPlaceholderScreen(
+                    title = selectedTab.title,
+                    modifier = Modifier.padding(innerPadding)
+                )
+            }
         }
     }
+}
+
+// MARK: - Detail Destination | iOS NavigationStack과 동일하게 항목 ID로 조회
+@Composable
+private fun ManagedItemDetailDestination(itemId: String, onBack: () -> Unit, modifier: Modifier = Modifier) {
+    val context = LocalContext.current.applicationContext
+    val repository = remember(context) { RoomManagedItemRepository(AppDatabase.getInstance(context).managedItemDao()) }
+    val detailViewModel: ManagedItemDetailViewModel = viewModel(
+        key = "managed_item_detail:$itemId",
+        factory = viewModelFactory { initializer { ManagedItemDetailViewModel(itemId, repository) } }
+    )
+    ManagedItemDetailScreen(viewModel = detailViewModel, onBack = onBack, modifier = modifier)
 }
 
 // MARK: - Temporary Tab Screen | 보관함·설정 임시 화면

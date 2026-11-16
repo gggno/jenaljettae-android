@@ -509,25 +509,61 @@ private fun buildCalendarWeek(dates: List<LocalDate>, events: List<CalendarEvent
     val hiddenCounts = MutableList(7) { 0 }
 
     candidates.forEach { candidate ->
-        val columns = candidate.startColumn..candidate.endColumn
-        val lane = (0..1).firstOrNull { row -> columns.all { !occupied[row][it] } }
+        var segmentStart: Int? = null
+        var segmentLane: Int? = null
 
-        if (lane != null) {
-            columns.forEach { occupied[lane][it] = true }
+        for (column in candidate.startColumn..candidate.endColumn) {
+            // 현재 줄을 우선 사용하고, 막혔으면 다른 빈 줄을 찾는다.
+            val lane = segmentLane?.takeIf { !occupied[it][column] }
+                ?: (0..1).firstOrNull { !occupied[it][column] }
+
+            // 줄이 바뀌거나 빈 줄이 없으면 이전 막대를 여기서 마무리한다.
+            if (lane != segmentLane) {
+                val previousStart = segmentStart
+                val previousLane = segmentLane
+                if (previousStart != null && previousLane != null) {
+                    segments.add(
+                        CalendarEventSegment(
+                            id = candidate.event.id,
+                            title = candidate.event.title,
+                            startColumn = previousStart,
+                            endColumn = column - 1,
+                            lane = previousLane,
+                            isMultiDay = candidate.isMultiDay,
+                            continuesBefore = candidate.continuesBefore || previousStart > candidate.startColumn,
+                            continuesAfter = true
+                        )
+                    )
+                }
+
+                segmentStart = if (lane == null) null else column
+                segmentLane = lane
+            }
+
+            if (lane != null) {
+                occupied[lane][column] = true
+            } else {
+                // 실제로 가려진 날짜에만 +N개를 계산한다.
+                hiddenCounts[column]++
+            }
+        }
+
+        // 마지막까지 표시된 구간을 확정한다.
+        val lastStart = segmentStart
+        val lastLane = segmentLane
+        if (lastStart != null && lastLane != null) {
             segments.add(
                 CalendarEventSegment(
                     id = candidate.event.id,
                     title = candidate.event.title,
-                    startColumn = candidate.startColumn,
+                    startColumn = lastStart,
                     endColumn = candidate.endColumn,
-                    lane = lane,
+                    lane = lastLane,
                     isMultiDay = candidate.isMultiDay,
-                    continuesBefore = candidate.continuesBefore,
+                    continuesBefore = candidate.continuesBefore || lastStart > candidate.startColumn,
                     continuesAfter = candidate.continuesAfter
                 )
             )
-        } else {
-            columns.forEach { hiddenCounts[it]++ }
         }
     }
 

@@ -22,61 +22,32 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-// MARK: - Selected Date Events
-
+// MARK: - Selected Date Events | 선택 날짜의 실제 항목 카드
 @Composable
 internal fun SelectedDateEventsView(
     selectedDate: LocalDate,
     events: List<HomeSampleEvent>,
     today: LocalDate,
-    onEventTap: () -> Unit,
+    onEventTap: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val colors = AppTheme.colors
-
     val selectedDateTitle = remember(selectedDate) {
         selectedDate.format(DateTimeFormatter.ofPattern("M월 d일 EEEE", Locale.KOREAN))
     }
 
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(AppSpacing.small)
-    ) {
-
-        // MARK: - Date Header
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = selectedDateTitle,
-                style = AppTypography.sectionTitle,
-                color = colors.textPrimary,
-                modifier = Modifier.weight(1f)
-            )
-
-            Text(
-                text = "${events.size}건",
-                style = AppTypography.body,
-                color = colors.textSecondary
-            )
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(AppSpacing.small)) {
+        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(selectedDateTitle, style = AppTypography.sectionTitle, color = colors.textPrimary, modifier = Modifier.weight(1f))
+            Text("${events.size}건", style = AppTypography.body, color = colors.textSecondary)
         }
-
-        // MARK: - Event List
 
         if (events.isEmpty()) {
             Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = AppSpacing.xxLarge),
+                modifier = Modifier.fillMaxWidth().padding(vertical = AppSpacing.xxLarge),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "이 날짜에는 일정이 없어요",
-                    style = AppTypography.body,
-                    color = colors.textSecondary
-                )
+                Text("이 날짜에는 일정이 없어요", style = AppTypography.body, color = colors.textSecondary)
             }
         } else {
             events.forEach { event ->
@@ -86,15 +57,14 @@ internal fun SelectedDateEventsView(
                     iconRes = event.iconRes,
                     statusLabel = event.statusLabel,
                     statusTone = if (event.date == today) StatusBadgeTone.ATTENTION else StatusBadgeTone.NEUTRAL,
-                    onClick = onEventTap
+                    onClick = { onEventTap(event.id) }
                 )
             }
         }
     }
 }
 
-// MARK: - Sample Event
-
+// MARK: - Home Sample Event | UI 카드 정보와 실제 ManagedItem ID
 internal data class HomeSampleEvent(
     val id: String,
     val date: LocalDate,
