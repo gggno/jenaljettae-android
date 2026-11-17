@@ -1,5 +1,7 @@
 package com.geunho.jenaljettae.features.home.detail
 
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.DropdownMenu
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -102,13 +104,24 @@ fun ManagedItemDetailScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showsCopyNotice by remember { mutableStateOf(false) }
     var showsImagePreview by remember { mutableStateOf(false) }
+    var showsEditScreen by remember { mutableStateOf(false) }
+    var showsMenu by remember { mutableStateOf(false) }
+    var showsDeleteConfirm by remember { mutableStateOf(false) }
+    var mutationError by remember { mutableStateOf<String?>(null) }
+    val imageStorage = remember(context) { CouponImageStorage(context) }
 
     val imageUri = remember(context, state.item?.imageFileName) {
         CouponImageStorage(context).getImageFile(state.item?.imageFileName)
             ?.takeIf { it.isFile }?.let { Uri.fromFile(it).toString() }
     }
 
-    BackHandler { onBack() }
+    BackHandler { if (showsEditScreen) showsEditScreen = false else onBack() }
+
+    // MARK: - Edit Screen | 기존 등록 화면 재사용
+    if (showsEditScreen && state.item != null) {
+        ManagedItemEditRoute(item = state.item!!, onClose = { showsEditScreen = false })
+        return
+    }
 
     Column(modifier = modifier.fillMaxSize().background(colors.background)) {
         // MARK: - Header | iOS 내비게이션 제목과 뒤로 가기
@@ -120,7 +133,24 @@ fun ManagedItemDetailScreen(
                 Icon(painterResource(AppIcon.back), contentDescription = "뒤로 가기", tint = colors.textPrimary, modifier = Modifier.size(24.dp))
             }
             Text("상세 정보", style = AppTypography.navigationTitle, color = colors.textPrimary, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-            Spacer(modifier = Modifier.width(48.dp))
+            // MARK: - Item Menu | 수정·삭제
+            Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+                if (state.item != null) {
+                    IconButton(onClick = { showsMenu = true }) {
+                        Icon(painterResource(AppIcon.more), contentDescription = "항목 관리", tint = colors.textPrimary)
+                    }
+                    DropdownMenu(expanded = showsMenu, onDismissRequest = { showsMenu = false }) {
+                        DropdownMenuItem(text = { Text("수정") }, onClick = {
+                            showsMenu = false
+                            showsEditScreen = true
+                        })
+                        DropdownMenuItem(text = { Text("삭제", color = androidx.compose.material3.MaterialTheme.colorScheme.error) }, onClick = {
+                            showsMenu = false
+                            showsDeleteConfirm = true
+                        })
+                    }
+                }
+            }
         }
 
         when {
@@ -158,6 +188,29 @@ fun ManagedItemDetailScreen(
         }
     }
 
+    // MARK: - Delete Alert | 중앙 확인창에서 삭제 확정
+    if (showsDeleteConfirm) {
+        AlertDialog(
+            onDismissRequest = { showsDeleteConfirm = false },
+            title = { Text("항목을 삭제할까요?") },
+            text = { Text("삭제한 항목은 복구할 수 없어요.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showsDeleteConfirm = false
+                    viewModel.deleteItem(imageStorage, onSuccess = onBack, onError = { mutationError = it })
+                }) { Text("삭제", color = androidx.compose.material3.MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { showsDeleteConfirm = false }) { Text("취소") } }
+        )
+    }
+    mutationError?.let { error ->
+        AlertDialog(
+            onDismissRequest = { mutationError = null },
+            title = { Text("삭제할 수 없어요") },
+            text = { Text(error) },
+            confirmButton = { TextButton(onClick = { mutationError = null }) { Text("확인") } }
+        )
+    }
     if (showsCopyNotice) {
         AlertDialog(
             onDismissRequest = { showsCopyNotice = false },

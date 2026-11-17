@@ -16,7 +16,8 @@ class SavePassUseCase(
     private val imageRepository: CouponImageRepository
 ) {
     // MARK: - Execute | 필수값 확인 후 Domain 모델 생성·저장
-    suspend fun execute(draft: PassDraft): ManagedItem {
+    suspend fun execute(draft: PassDraft, editingItem: ManagedItem? = null): ManagedItem {
+        require(editingItem == null || editingItem.type == ManagedItemType.PASS)
         val title = draft.title.trim()
 
         require(title.isNotEmpty()) { "이용권 이름을 입력해주세요." }
@@ -25,10 +26,13 @@ class SavePassUseCase(
         require(!endDate.isBefore(startDate)) { "종료일은 시작일보다 빠를 수 없어요." }
 
         // MARK: - Save Image | Photo Picker URI를 앱 내부 파일로 영구 저장
-        val savedImageFileName = draft.imageUri?.let { imageRepository.saveImage(it) }
+        val imageChange = prepareItemEditImage(draft.imageUri, editingItem, imageRepository)
+        val savedImageFileName = imageChange.finalFileName
 
         // MARK: - Create Item | 기존 ManagedItem을 이용권 유형으로 재사용
         val item = ManagedItem(
+            id = editingItem?.id ?: java.util.UUID.randomUUID().toString(),
+            createdAt = editingItem?.createdAt ?: System.currentTimeMillis(),
             type = ManagedItemType.PASS,
             title = title,
             detail = draft.place.trim(),
@@ -43,10 +47,10 @@ class SavePassUseCase(
         try {
             repository.saveItem(item)
         } catch (error: Exception) {
-            if (savedImageFileName != null) {
+            if (imageChange.newlyCreatedFileName != null) {
                 withContext(NonCancellable) {
                     try {
-                        imageRepository.deleteImage(savedImageFileName)
+                        imageRepository.deleteImage(imageChange.newlyCreatedFileName)
                     } catch (cleanupError: Exception) {
                         if (cleanupError is CancellationException) throw cleanupError
                         error.addSuppressed(cleanupError)
@@ -56,6 +60,7 @@ class SavePassUseCase(
             throw error
         }
 
+        imageChange.cleanupReplaced(imageRepository)
         return item
     }
 }

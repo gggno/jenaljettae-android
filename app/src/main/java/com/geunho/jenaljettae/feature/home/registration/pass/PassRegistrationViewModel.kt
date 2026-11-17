@@ -40,6 +40,19 @@ class PassRegistrationViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(PassRegistrationUiState())
     val uiState: StateFlow<PassRegistrationUiState> = _uiState.asStateFlow()
 
+    // MARK: - Edit Initialization | Room 항목의 기존 값을 등록 입력 UI에 적용
+    fun applyEditingItem(item: ManagedItem, imageUri: String?) {
+        _uiState.value = PassRegistrationUiState(
+            title = item.title,
+            place = item.detail,
+            startDate = item.startDate,
+            endDate = item.endDate,
+            passNumber = item.couponNumber.orEmpty(),
+            memo = item.memo.orEmpty(),
+            imageUri = imageUri
+        )
+    }
+
     fun updateTitle(value: String) { _uiState.update { it.copy(title = value) } }
     fun updatePlace(value: String) { _uiState.update { it.copy(place = value) } }
     fun updateStartDate(value: LocalDate) { _uiState.update { it.copy(startDate = value) } }
@@ -52,13 +65,13 @@ class PassRegistrationViewModel : ViewModel() {
     fun clearError() { _uiState.update { it.copy(errorMessage = null) } }
 
     // MARK: - Save Pass | UI가 코루틴에서 호출하고 완료 항목을 반환
-    suspend fun savePass(using: SavePassUseCase): ManagedItem? {
+    suspend fun savePass(using: SavePassUseCase, editingItem: ManagedItem? = null): ManagedItem? {
         val state = _uiState.value
         if (!state.canSave) return null
 
         _uiState.update { it.copy(isSaving = true, errorMessage = null) }
         return try {
-            val savedItem = using.execute(state.toDraft())
+            val savedItem = using.execute(state.toDraft(), editingItem)
             _uiState.update { it.copy(isSaving = false, hasSaved = true) }
             savedItem
         } catch (error: CancellationException) {

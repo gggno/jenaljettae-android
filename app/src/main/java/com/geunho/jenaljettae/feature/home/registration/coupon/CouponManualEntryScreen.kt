@@ -1,5 +1,8 @@
 package com.geunho.jenaljettae.features.home.registration.coupon
 
+import androidx.compose.ui.platform.LocalContext
+import com.geunho.jenaljettae.data.local.CouponImageStorage
+import com.geunho.jenaljettae.domain.model.ManagedItem
 import android.net.Uri
 import android.widget.NumberPicker
 import androidx.activity.compose.BackHandler
@@ -84,6 +87,7 @@ fun CouponManualEntryScreen(
     onBack: () -> Unit,
     initialDraft: CouponDraft? = null,
     initialImageUri: Uri? = null,
+    editingItem: ManagedItem? = null,
     registrationViewModel: CouponRegistrationViewModel = viewModel()
 ) {
     val colors = AppTheme.colors
@@ -99,6 +103,7 @@ fun CouponManualEntryScreen(
     // MARK: - UI State | ViewModel 상태 관찰 및 화면 전용 상태 관리
     val uiState by registrationViewModel.uiState.collectAsStateWithLifecycle()
     val sessionId = rememberSaveable { UUID.randomUUID().toString() }
+    val imageContext = LocalContext.current.applicationContext
 
     var showsDatePicker by rememberSaveable { mutableStateOf(false) }
     var showsMemoEditor by rememberSaveable { mutableStateOf(false) }
@@ -126,8 +131,13 @@ fun CouponManualEntryScreen(
     val reviewNotes = initialDraft?.reviewNotes.orEmpty()
 
     // MARK: - Registration Session | 상태 초기화 후 AI 분석 결과와 원본 이미지 적용
-    LaunchedEffect(sessionId) {
+    LaunchedEffect(sessionId, editingItem?.id) {
         registrationViewModel.startSession(sessionId)
+        if (editingItem != null) {
+            val source = CouponImageStorage(imageContext).getImageFile(editingItem.imageFileName)
+            val existingImageUri = source?.takeIf { it.isFile }?.let { Uri.fromFile(it).toString() }
+            registrationViewModel.applyEditingItem(editingItem, existingImageUri)
+        } else {
 
         initialDraft?.let { draft ->
             registrationViewModel.updateCouponTitle(draft.title.orEmpty())
@@ -137,6 +147,7 @@ fun CouponManualEntryScreen(
         }
 
         initialImageUri?.let { registrationViewModel.setImageUri(it.toString()) }
+        }
     }
 
     val dismissKeyboard = {
@@ -184,7 +195,7 @@ fun CouponManualEntryScreen(
             }
 
             Text(
-                text = "쿠폰 등록",
+                text = if (editingItem != null) "쿠폰 수정" else "쿠폰 등록",
                 style = MaterialTheme.typography.titleMedium,
                 color = colors.textPrimary,
                 textAlign = TextAlign.Center,
@@ -469,7 +480,7 @@ fun CouponManualEntryScreen(
 
                     if (useCase != null && savedCallback != null) {
                         coroutineScope.launch {
-                            val savedItem = registrationViewModel.saveCoupon(using = useCase)
+                            val savedItem = registrationViewModel.saveCoupon(using = useCase, editingItem = editingItem)
                             if (savedItem != null) savedCallback(savedItem)
                         }
                     }
@@ -488,7 +499,7 @@ fun CouponManualEntryScreen(
                 )
             ) {
                 Text(
-                    text = if (uiState.isSaving) "저장 중..." else "쿠폰 저장",
+                    text = if (uiState.isSaving) "저장 중..." else if (editingItem != null) "수정 완료" else "쿠폰 저장",
                     style = MaterialTheme.typography.titleSmall
                 )
             }

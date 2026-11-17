@@ -45,6 +45,18 @@ class CouponRegistrationViewModel : ViewModel() {
         _uiState.value = CouponRegistrationUiState()
     }
 
+    // MARK: - Edit Initialization | Room 항목의 기존 값을 등록 입력 UI에 적용
+    fun applyEditingItem(item: ManagedItem, imageUri: String?) {
+        _uiState.value = CouponRegistrationUiState(
+            couponTitle = item.title,
+            brand = item.detail,
+            expiryDate = item.endDate ?: item.startDate,
+            couponNumber = item.couponNumber.orEmpty(),
+            memo = item.memo.orEmpty(),
+            imageUri = imageUri
+        )
+    }
+
     // MARK: - Input Updates | 사용자 입력값 변경
     fun updateCouponTitle(value: String) = _uiState.update { it.copy(couponTitle = value) }
     fun updateBrand(value: String) = _uiState.update { it.copy(brand = value) }
@@ -61,7 +73,7 @@ class CouponRegistrationViewModel : ViewModel() {
     fun clearError() = _uiState.update { it.copy(errorMessage = null) }
 
     // MARK: - Save Coupon | 쿠폰 정보와 선택한 이미지를 UseCase에 전달
-    suspend fun saveCoupon(using: SaveCouponUseCase): ManagedItem? {
+    suspend fun saveCoupon(using: SaveCouponUseCase, editingItem: ManagedItem? = null): ManagedItem? {
         val state = _uiState.value
         if (!state.canSave) return null
 
@@ -74,7 +86,8 @@ class CouponRegistrationViewModel : ViewModel() {
                 expiryDate = state.expiryDate,
                 couponNumber = state.couponNumber,
                 memo = state.memo,
-                imageUri = state.imageUri
+                imageUri = state.imageUri,
+                editingItem = editingItem
             )
 
             _uiState.update { it.copy(hasSaved = true) }

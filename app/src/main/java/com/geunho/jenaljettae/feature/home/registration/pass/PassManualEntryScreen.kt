@@ -1,5 +1,9 @@
 package com.geunho.jenaljettae.features.home.registration.pass
 
+import android.net.Uri
+import androidx.compose.ui.platform.LocalContext
+import com.geunho.jenaljettae.data.local.CouponImageStorage
+import com.geunho.jenaljettae.domain.model.ManagedItem
 import android.widget.NumberPicker
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
@@ -81,6 +85,7 @@ import java.time.format.DateTimeFormatter
 @Composable
 fun PassManualEntryScreen(
     onBack: () -> Unit,
+    editingItem: ManagedItem? = null,
     registrationViewModel: PassRegistrationViewModel = viewModel()
 ) {
     val colors = AppTheme.colors
@@ -140,6 +145,16 @@ fun PassManualEntryScreen(
         }
     }
 
+    // MARK: - Edit Initial Data | 기존 이미지·입력값을 수정 모드에 반영
+    val imageContext = LocalContext.current.applicationContext
+    LaunchedEffect(editingItem?.id) {
+        editingItem?.let { original ->
+            val source = CouponImageStorage(imageContext).getImageFile(original.imageFileName)
+            val existingImageUri = source?.takeIf { it.isFile }?.let { Uri.fromFile(it).toString() }
+            registrationViewModel.applyEditingItem(original, existingImageUri)
+        }
+    }
+
     BackHandler { onBack() }
 
     Column(
@@ -166,7 +181,7 @@ fun PassManualEntryScreen(
                 )
             }
             Text(
-                text = "이용권 등록",
+                text = if (editingItem != null) "이용권 수정" else "이용권 등록",
                 style = MaterialTheme.typography.titleMedium,
                 color = colors.textPrimary,
                 textAlign = TextAlign.Center,
@@ -371,7 +386,7 @@ fun PassManualEntryScreen(
                     val savedCallback = onPassSaved
                     if (useCase != null && savedCallback != null) {
                         coroutineScope.launch {
-                            val savedItem = registrationViewModel.savePass(using = useCase)
+                            val savedItem = registrationViewModel.savePass(using = useCase, editingItem = editingItem)
                             if (savedItem != null) savedCallback(savedItem)
                         }
                     }
@@ -386,7 +401,7 @@ fun PassManualEntryScreen(
                     disabledContentColor = colors.textSecondary
                 )
             ) {
-                Text(if (uiState.isSaving) "저장 중..." else "이용권 저장", style = MaterialTheme.typography.titleSmall)
+                Text(if (uiState.isSaving) "저장 중..." else if (editingItem != null) "수정 완료" else "이용권 저장", style = MaterialTheme.typography.titleSmall)
             }
         }
     }

@@ -45,6 +45,18 @@ class SubscriptionRegistrationViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(SubscriptionRegistrationUiState())
     val uiState: StateFlow<SubscriptionRegistrationUiState> = _uiState.asStateFlow()
 
+    // MARK: - Edit Initialization | Room 항목의 기존 값을 등록 입력 UI에 적용
+    fun applyEditingItem(item: ManagedItem, imageUri: String?) {
+        _uiState.value = SubscriptionRegistrationUiState(
+            title = item.title,
+            cycle = item.subscriptionCycle ?: SubscriptionCycle.MONTHLY,
+            subscriptionStartDate = item.startDate,
+            amountText = item.subscriptionAmount?.toString().orEmpty(),
+            memo = item.memo.orEmpty(),
+            imageUri = imageUri
+        )
+    }
+
     fun updateTitle(value: String) { _uiState.update { it.copy(title = value) } }
     fun updateCycle(value: SubscriptionCycle) { _uiState.update { it.copy(cycle = value) } }
     fun updateStartDate(value: LocalDate) { _uiState.update { it.copy(subscriptionStartDate = value) } }
@@ -56,13 +68,13 @@ class SubscriptionRegistrationViewModel : ViewModel() {
     fun clearError() { _uiState.update { it.copy(errorMessage = null) } }
 
     // MARK: - Save | Room 저장 완료 시 동일 항목 반환
-    suspend fun saveSubscription(using: SaveSubscriptionUseCase): ManagedItem? {
+    suspend fun saveSubscription(using: SaveSubscriptionUseCase, editingItem: ManagedItem? = null): ManagedItem? {
         val state = _uiState.value
         if (!state.canSave) return null
 
         _uiState.update { it.copy(isSaving = true, errorMessage = null) }
         return try {
-            val savedItem = using.execute(state.toDraft())
+            val savedItem = using.execute(state.toDraft(), editingItem)
             _uiState.update { it.copy(isSaving = false, hasSaved = true) }
             savedItem
         } catch (error: CancellationException) {

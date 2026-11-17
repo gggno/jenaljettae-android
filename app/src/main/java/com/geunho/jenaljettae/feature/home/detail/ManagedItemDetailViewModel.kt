@@ -1,5 +1,6 @@
 package com.geunho.jenaljettae.features.home.detail
 
+import com.geunho.jenaljettae.data.local.CouponImageStorage
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.geunho.jenaljettae.domain.model.ManagedItem
@@ -44,6 +45,28 @@ class ManagedItemDetailViewModel(
                     isLoading = false,
                     errorMessage = "상세 정보를 불러오지 못했어요."
                 )
+            }
+        }
+    }
+
+    // MARK: - Delete Item | DB 삭제 성공 후 연결된 내부 이미지 정리
+    private var isDeleting = false
+
+    fun deleteItem(storage: CouponImageStorage, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        if (isDeleting) return
+        val original = _uiState.value.item ?: return
+        isDeleting = true
+        viewModelScope.launch {
+            try {
+                repository.deleteItem(itemId)
+                runCatching { storage.deleteImage(original.imageFileName) }
+                onSuccess()
+            } catch (error: CancellationException) {
+                throw error
+            } catch (error: Exception) {
+                onError(error.localizedMessage ?: "항목을 삭제하지 못했어요.")
+            } finally {
+                isDeleting = false
             }
         }
     }

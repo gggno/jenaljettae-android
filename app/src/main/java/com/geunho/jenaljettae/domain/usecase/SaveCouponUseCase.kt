@@ -22,8 +22,10 @@ class SaveCouponUseCase(
         expiryDate: LocalDate?,
         couponNumber: String,
         memo: String,
-        imageUri: String? = null
+        imageUri: String? = null,
+        editingItem: ManagedItem? = null
     ): ManagedItem {
+        require(editingItem == null || editingItem.type == ManagedItemType.COUPON)
         val trimmedTitle = title.trim()
 
         // MARK: - Validation | 상품명과 만료일 필수값 검증
@@ -31,14 +33,17 @@ class SaveCouponUseCase(
         requireNotNull(expiryDate) { "만료일을 선택해주세요." }
 
         // MARK: - Save Image | 선택한 이미지가 있으면 내부 저장소에 저장
-        val savedImageFileName = imageUri?.let { imageRepository.saveImage(it) }
+        val imageChange = prepareItemEditImage(imageUri, editingItem, imageRepository)
+        val savedImageFileName = imageChange.finalFileName
 
         // MARK: - Create Item | 쿠폰 정보와 이미지 파일명으로 모델 생성
         val item = ManagedItem(
+            id = editingItem?.id ?: java.util.UUID.randomUUID().toString(),
+            createdAt = editingItem?.createdAt ?: System.currentTimeMillis(),
             type = ManagedItemType.COUPON,
             title = trimmedTitle,
             detail = brand.trim(),
-            startDate = LocalDate.now(),
+            startDate = editingItem?.startDate ?: LocalDate.now(),
             endDate = expiryDate,
             couponNumber = couponNumber.trim().ifEmpty { null },
             memo = memo.trim().ifEmpty { null },
@@ -49,10 +54,10 @@ class SaveCouponUseCase(
         try {
             repository.saveItem(item)
         } catch (error: Exception) {
-            if (savedImageFileName != null) {
+            if (imageChange.newlyCreatedFileName != null) {
                 withContext(NonCancellable) {
                     try {
-                        imageRepository.deleteImage(savedImageFileName)
+                        imageRepository.deleteImage(imageChange.newlyCreatedFileName)
                     } catch (cleanupError: Exception) {
                         if (cleanupError is CancellationException) throw cleanupError
                         error.addSuppressed(cleanupError)
@@ -62,6 +67,7 @@ class SaveCouponUseCase(
             throw error
         }
 
+        imageChange.cleanupReplaced(imageRepository)
         return item
     }
 }

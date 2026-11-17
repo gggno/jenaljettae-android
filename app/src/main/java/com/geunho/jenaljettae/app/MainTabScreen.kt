@@ -39,6 +39,8 @@ import com.geunho.jenaljettae.domain.usecase.SaveSubscriptionUseCase
 import com.geunho.jenaljettae.domain.usecase.SaveScheduleUseCase
 import com.geunho.jenaljettae.features.home.HomeScreen
 import com.geunho.jenaljettae.features.home.HomeViewModel
+import com.geunho.jenaljettae.features.library.LibraryScreen
+import com.geunho.jenaljettae.features.library.LibraryViewModel
 import com.geunho.jenaljettae.features.home.detail.ManagedItemDetailScreen
 import com.geunho.jenaljettae.features.home.detail.ManagedItemDetailViewModel
 import com.geunho.jenaljettae.features.home.registration.LocalOnCouponSaved
@@ -206,16 +208,16 @@ fun MainTabScreen(
             }
         }
     ) { innerPadding ->
-        // MARK: - Detail Destination | 홈 항목 상세화면, 하단 탭 숨김
+        // MARK: - Detail Destination | 홈·보관함 항목 상세화면, 하단 탭 숨김
         val itemId = selectedItemId
-        if (selectedTab == MainTab.HOME && itemId != null) {
+        if (itemId != null) {
             ManagedItemDetailDestination(
                 itemId = itemId,
                 modifier = Modifier.padding(innerPadding),
                 onBack = { selectedItemId = null }
             )
         } else {
-            // MARK: - Selected Tab | 기존 홈 및 임시 탭
+            // MARK: - Selected Tab | 홈·보관함·설정 탭
             when (selectedTab) {
                 MainTab.HOME -> HomeScreen(
                     viewModel = homeViewModel,
@@ -224,13 +226,29 @@ fun MainTabScreen(
                     onOpenDetail = { selectedItemId = it }
                 )
 
-                MainTab.LIBRARY, MainTab.SETTINGS -> TabPlaceholderScreen(
+                MainTab.LIBRARY -> LibraryDestination(
+                    modifier = Modifier.padding(innerPadding),
+                    onOpenDetail = { selectedItemId = it }
+                )
+
+                MainTab.SETTINGS -> TabPlaceholderScreen(
                     title = selectedTab.title,
                     modifier = Modifier.padding(innerPadding)
                 )
             }
         }
     }
+}
+
+// MARK: - Library Destination | Room을 보관함 ViewModel에 주입
+@Composable
+private fun LibraryDestination(onOpenDetail: (String) -> Unit, modifier: Modifier = Modifier) {
+    val context = LocalContext.current.applicationContext
+    val repository = remember(context) { RoomManagedItemRepository(AppDatabase.getInstance(context).managedItemDao()) }
+    val libraryViewModel: LibraryViewModel = viewModel(
+        factory = viewModelFactory { initializer { LibraryViewModel(repository) } }
+    )
+    LibraryScreen(viewModel = libraryViewModel, onOpenDetail = onOpenDetail, modifier = modifier)
 }
 
 // MARK: - Detail Destination | iOS NavigationStack과 동일하게 항목 ID로 조회
@@ -245,7 +263,7 @@ private fun ManagedItemDetailDestination(itemId: String, onBack: () -> Unit, mod
     ManagedItemDetailScreen(viewModel = detailViewModel, onBack = onBack, modifier = modifier)
 }
 
-// MARK: - Temporary Tab Screen | 보관함·설정 임시 화면
+// MARK: - Temporary Tab Screen | 설정 임시 화면
 @Composable
 private fun TabPlaceholderScreen(
     title: String,

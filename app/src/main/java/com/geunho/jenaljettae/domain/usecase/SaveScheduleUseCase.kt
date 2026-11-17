@@ -15,7 +15,8 @@ class SaveScheduleUseCase(
     private val imageRepository: CouponImageRepository
 ) {
     // MARK: - Execute | 필수 입력 검증 및 일정 저장
-    suspend fun execute(draft: ScheduleDraft): ManagedItem {
+    suspend fun execute(draft: ScheduleDraft, editingItem: ManagedItem? = null): ManagedItem {
+        require(editingItem == null || editingItem.type == ManagedItemType.SCHEDULE)
         val title = draft.title.trim()
 
         require(title.isNotEmpty()) { "일정명을 입력해주세요." }
@@ -37,12 +38,13 @@ class SaveScheduleUseCase(
         }
 
         // MARK: - Image | 기존 공통 이미지 저장소 재사용
-        val savedImageFileName = draft.imageUri?.let {
-            imageRepository.saveImage(it)
-        }
+        val imageChange = prepareItemEditImage(draft.imageUri, editingItem, imageRepository)
+        val savedImageFileName = imageChange.finalFileName
 
         // MARK: - Item | 공통 ManagedItem 생성
         val item = ManagedItem(
+            id = editingItem?.id ?: java.util.UUID.randomUUID().toString(),
+            createdAt = editingItem?.createdAt ?: System.currentTimeMillis(),
             type = ManagedItemType.SCHEDULE,
             title = title,
             detail = draft.place.trim(),
@@ -57,10 +59,10 @@ class SaveScheduleUseCase(
         try {
             repository.saveItem(item)
         } catch (error: Exception) {
-            if (savedImageFileName != null) {
+            if (imageChange.newlyCreatedFileName != null) {
                 withContext(NonCancellable) {
                     try {
-                        imageRepository.deleteImage(savedImageFileName)
+                        imageRepository.deleteImage(imageChange.newlyCreatedFileName)
                     } catch (cleanupError: Exception) {
                         if (cleanupError is CancellationException) throw cleanupError
                         error.addSuppressed(cleanupError)
@@ -71,6 +73,7 @@ class SaveScheduleUseCase(
             throw error
         }
 
+        imageChange.cleanupReplaced(imageRepository)
         return item
     }
 }

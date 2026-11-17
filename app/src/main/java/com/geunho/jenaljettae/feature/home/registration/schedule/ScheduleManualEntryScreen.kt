@@ -1,5 +1,10 @@
 package com.geunho.jenaljettae.features.home.registration.schedule
 
+import androidx.compose.runtime.LaunchedEffect
+import android.net.Uri
+import androidx.compose.ui.platform.LocalContext
+import com.geunho.jenaljettae.data.local.CouponImageStorage
+import com.geunho.jenaljettae.domain.model.ManagedItem
 import android.widget.NumberPicker
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -74,6 +79,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 @Composable
 fun ScheduleManualEntryScreen(
     onBack: () -> Unit,
+    editingItem: ManagedItem? = null,
     registrationViewModel: ScheduleRegistrationViewModel = viewModel()
 ) {
     val colors = AppTheme.colors
@@ -147,6 +153,16 @@ fun ScheduleManualEntryScreen(
         showsTimePicker = true
     }
 
+    // MARK: - Edit Initial Data | 기존 이미지·입력값을 수정 모드에 반영
+    val imageContext = LocalContext.current.applicationContext
+    LaunchedEffect(editingItem?.id) {
+        editingItem?.let { original ->
+            val source = CouponImageStorage(imageContext).getImageFile(original.imageFileName)
+            val existingImageUri = source?.takeIf { it.isFile }?.let { Uri.fromFile(it).toString() }
+            registrationViewModel.applyEditingItem(original, existingImageUri)
+        }
+    }
+
     BackHandler { onBack() }
 
     Column(
@@ -174,7 +190,7 @@ fun ScheduleManualEntryScreen(
             }
 
             Text(
-                text = "일정 등록",
+                text = if (editingItem != null) "일정 수정" else "일정 등록",
                 style = MaterialTheme.typography.titleMedium,
                 color = colors.textPrimary,
                 textAlign = TextAlign.Center,
@@ -464,7 +480,7 @@ fun ScheduleManualEntryScreen(
 
                     if (useCase != null && callback != null) {
                         coroutineScope.launch {
-                            val savedItem = registrationViewModel.saveSchedule(using = useCase)
+                            val savedItem = registrationViewModel.saveSchedule(using = useCase, editingItem = editingItem)
                             if (savedItem != null) callback(savedItem)
                         }
                     }
@@ -482,7 +498,7 @@ fun ScheduleManualEntryScreen(
                 )
             ) {
                 Text(
-                    if (uiState.isSaving) "저장 중..." else "일정 저장",
+                    if (uiState.isSaving) "저장 중..." else if (editingItem != null) "수정 완료" else "일정 저장",
                     style = MaterialTheme.typography.titleSmall
                 )
             }
