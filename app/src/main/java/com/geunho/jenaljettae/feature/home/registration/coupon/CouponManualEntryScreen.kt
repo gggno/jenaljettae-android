@@ -70,6 +70,7 @@ import com.geunho.jenaljettae.features.home.registration.RegistrationImagePrevie
 import com.geunho.jenaljettae.features.home.registration.RegistrationImageSection
 import com.geunho.jenaljettae.features.home.registration.LocalOnCouponSaved
 import com.geunho.jenaljettae.features.home.registration.LocalSaveCouponUseCase
+import com.geunho.jenaljettae.ui.components.AppNavigationHeader
 import com.geunho.jenaljettae.ui.theme.AppRadius
 import com.geunho.jenaljettae.ui.theme.AppSpacing
 import com.geunho.jenaljettae.ui.theme.AppTheme
@@ -174,36 +175,7 @@ fun CouponManualEntryScreen(
             .imePadding()
     ) {
         // MARK: - Header | 뒤로 가기 및 화면 제목
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(
-                    horizontal = AppSpacing.xSmall,
-                    vertical = AppSpacing.small),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier.size(48.dp)
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_jnt_chevron_left),
-                    contentDescription = "뒤로 가기",
-                    tint = colors.textPrimary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-
-            Text(
-                text = if (editingItem != null) "쿠폰 수정" else "쿠폰 등록",
-                style = MaterialTheme.typography.titleMedium,
-                color = colors.textPrimary,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.weight(1f)
-            )
-
-            Spacer(modifier = Modifier.size(48.dp))
-        }
+        AppNavigationHeader(title = if (editingItem != null) "쿠폰 수정" else "쿠폰 등록", onBack = onBack)
 
         // MARK: - Input Content | 이미지와 입력 항목, 저장 버튼을 함께 스크롤
         Column(

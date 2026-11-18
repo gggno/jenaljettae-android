@@ -69,6 +69,7 @@ import com.geunho.jenaljettae.features.home.registration.RegistrationImagePrevie
 import com.geunho.jenaljettae.features.home.registration.RegistrationImageSection
 import com.geunho.jenaljettae.features.home.registration.LocalSavePassUseCase
 import com.geunho.jenaljettae.features.home.registration.LocalOnPassSaved
+import com.geunho.jenaljettae.ui.components.AppNavigationHeader
 import com.geunho.jenaljettae.ui.theme.AppRadius
 import com.geunho.jenaljettae.ui.theme.AppSpacing
 import com.geunho.jenaljettae.ui.theme.AppTheme
@@ -166,29 +167,7 @@ fun PassManualEntryScreen(
             .imePadding()
     ) {
         // MARK: - Header | 뒤로 가기 및 제목
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = AppSpacing.xSmall, vertical = AppSpacing.small),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_jnt_chevron_left),
-                    contentDescription = "뒤로 가기",
-                    tint = colors.textPrimary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Text(
-                text = if (editingItem != null) "이용권 수정" else "이용권 등록",
-                style = MaterialTheme.typography.titleMedium,
-                color = colors.textPrimary,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.weight(1f)
-            )
-            Spacer(modifier = Modifier.size(48.dp))
-        }
+        AppNavigationHeader(title = if (editingItem != null) "이용권 수정" else "이용권 등록", onBack = onBack)
 
         // MARK: - Input Content | 빈 공간 터치로만 키보드 닫기 (스크롤 중 유지)
         Column(

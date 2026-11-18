@@ -42,6 +42,7 @@ import com.geunho.jenaljettae.ui.theme.AppRadius
 import com.geunho.jenaljettae.ui.theme.AppSpacing
 import com.geunho.jenaljettae.ui.theme.AppTheme
 import com.geunho.jenaljettae.ui.theme.AppTypography
+import com.geunho.jenaljettae.ui.components.AppNavigationHeader
 
 // MARK: - Registration Type Selection | 등록 유형 선택
 @Composable
@@ -67,30 +68,7 @@ fun RegistrationTypeSelectionScreen(
             .navigationBarsPadding()
     ) {
         // MARK: - Header | 유형 선택 화면
-        Row(
-            modifier = Modifier.fillMaxWidth()
-                .padding(horizontal = AppSpacing.xSmall, vertical = AppSpacing.small),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onClose, modifier = Modifier.size(48.dp)) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_jnt_close),
-                    contentDescription = "닫기",
-                    tint = colors.textPrimary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-
-            Text(
-                text = "유형 선택",
-                style = MaterialTheme.typography.titleMedium,
-                color = colors.textPrimary,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.weight(1f)
-            )
-
-            Spacer(modifier = Modifier.size(48.dp))
-        }
+        AppNavigationHeader(title = "유형 선택", onBack = onClose, iconRes = AppIcon.close)
 
         // MARK: - Content | 등록 유형 안내
         Column(

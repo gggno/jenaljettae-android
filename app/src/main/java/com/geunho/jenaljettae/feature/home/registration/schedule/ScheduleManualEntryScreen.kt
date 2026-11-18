@@ -74,6 +74,7 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
+import com.geunho.jenaljettae.ui.components.AppNavigationHeader
 
 // MARK: - Schedule Manual Entry | 일정 직접 입력 및 저장
 @Composable
@@ -174,31 +175,7 @@ fun ScheduleManualEntryScreen(
             .imePadding()
     ) {
         // MARK: - Header | 뒤로 가기 및 제목
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = AppSpacing.xSmall, vertical = AppSpacing.small),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_jnt_chevron_left),
-                    contentDescription = "뒤로 가기",
-                    tint = colors.textPrimary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-
-            Text(
-                text = if (editingItem != null) "일정 수정" else "일정 등록",
-                style = MaterialTheme.typography.titleMedium,
-                color = colors.textPrimary,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.weight(1f)
-            )
-
-            Spacer(modifier = Modifier.size(48.dp))
-        }
+        AppNavigationHeader(title = if (editingItem != null) "일정 수정" else "일정 등록", onBack = onBack)
 
         // MARK: - Input Content | 빈 공간 터치 시 키보드 닫기
         Column(

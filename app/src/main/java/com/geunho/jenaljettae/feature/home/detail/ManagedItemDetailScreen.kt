@@ -91,6 +91,7 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Locale
 import kotlin.math.roundToInt
+import com.geunho.jenaljettae.ui.components.AppNavigationHeader
 
 // MARK: - Managed Item Detail Screen | iOS 포인트 카드형 상세 화면
 @Composable
@@ -124,34 +125,43 @@ fun ManagedItemDetailScreen(
     }
 
     Column(modifier = modifier.fillMaxSize().background(colors.background)) {
-        // MARK: - Header | iOS 내비게이션 제목과 뒤로 가기
-        Row(
-            modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = AppSpacing.xSmall),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
-                Icon(painterResource(AppIcon.back), contentDescription = "뒤로 가기", tint = colors.textPrimary, modifier = Modifier.size(24.dp))
-            }
-            Text("상세 정보", style = AppTypography.navigationTitle, color = colors.textPrimary, modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-            // MARK: - Item Menu | 수정·삭제
-            Box(modifier = Modifier.size(48.dp), contentAlignment = Alignment.Center) {
+        // MARK: - Header | 상세 정보 및 수정·삭제 메뉴
+        AppNavigationHeader(
+            title = "상세 정보",
+            onBack = onBack,
+            trailingAction = {
                 if (state.item != null) {
                     IconButton(onClick = { showsMenu = true }) {
-                        Icon(painterResource(AppIcon.more), contentDescription = "항목 관리", tint = colors.textPrimary)
+                        Icon(
+                            painter = painterResource(AppIcon.more),
+                            contentDescription = "항목 관리",
+                            tint = colors.textPrimary
+                        )
                     }
-                    DropdownMenu(expanded = showsMenu, onDismissRequest = { showsMenu = false }) {
-                        DropdownMenuItem(text = { Text("수정") }, onClick = {
-                            showsMenu = false
-                            showsEditScreen = true
-                        })
-                        DropdownMenuItem(text = { Text("삭제", color = androidx.compose.material3.MaterialTheme.colorScheme.error) }, onClick = {
-                            showsMenu = false
-                            showsDeleteConfirm = true
-                        })
+
+                    DropdownMenu(
+                        expanded = showsMenu,
+                        onDismissRequest = { showsMenu = false }
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("수정") },
+                            onClick = {
+                                showsMenu = false
+                                showsEditScreen = true
+                            }
+                        )
+
+                        DropdownMenuItem(
+                            text = { Text("삭제", color = androidx.compose.material3.MaterialTheme.colorScheme.error) },
+                            onClick = {
+                                showsMenu = false
+                                showsDeleteConfirm = true
+                            }
+                        )
                     }
                 }
             }
-        }
+        )
 
         when {
             state.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

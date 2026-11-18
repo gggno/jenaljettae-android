@@ -1,7 +1,10 @@
 package com.geunho.jenaljettae.app
 
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import androidx.annotation.DrawableRes
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -12,35 +15,39 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.geunho.jenaljettae.data.local.AppDatabase
 import com.geunho.jenaljettae.data.local.CouponImageStorage
+import com.geunho.jenaljettae.data.repository.DataStoreThemeRepository
 import com.geunho.jenaljettae.data.repository.LocalCouponImageRepository
 import com.geunho.jenaljettae.data.repository.RoomManagedItemRepository
 import com.geunho.jenaljettae.data.repository.SampleManagedItemRepository
+import com.geunho.jenaljettae.data.repository.SystemNotificationPermissionRepository
+import com.geunho.jenaljettae.domain.model.AppThemeMode
 import com.geunho.jenaljettae.domain.model.ManagedItem
+import com.geunho.jenaljettae.domain.repository.ThemeRepository
 import com.geunho.jenaljettae.domain.usecase.SaveCouponUseCase
 import com.geunho.jenaljettae.domain.usecase.SavePassUseCase
 import com.geunho.jenaljettae.domain.usecase.SaveSubscriptionUseCase
 import com.geunho.jenaljettae.domain.usecase.SaveScheduleUseCase
 import com.geunho.jenaljettae.features.home.HomeScreen
 import com.geunho.jenaljettae.features.home.HomeViewModel
-import com.geunho.jenaljettae.features.library.LibraryScreen
-import com.geunho.jenaljettae.features.library.LibraryViewModel
 import com.geunho.jenaljettae.features.home.detail.ManagedItemDetailScreen
 import com.geunho.jenaljettae.features.home.detail.ManagedItemDetailViewModel
 import com.geunho.jenaljettae.features.home.registration.LocalOnCouponSaved
@@ -52,11 +59,13 @@ import com.geunho.jenaljettae.features.home.registration.LocalSavePassUseCase
 import com.geunho.jenaljettae.features.home.registration.LocalSaveSubscriptionUseCase
 import com.geunho.jenaljettae.features.home.registration.LocalSaveScheduleUseCase
 import com.geunho.jenaljettae.features.home.registration.RegistrationNavHost
+import com.geunho.jenaljettae.features.library.LibraryScreen
+import com.geunho.jenaljettae.features.library.LibraryViewModel
+import com.geunho.jenaljettae.features.settings.SettingsScreen
 import com.geunho.jenaljettae.ui.theme.AppIcon
-import com.geunho.jenaljettae.ui.theme.AppSpacing
 import com.geunho.jenaljettae.ui.theme.AppTheme
-import com.geunho.jenaljettae.ui.theme.AppTypography
 import com.geunho.jenaljettae.ui.theme.JENALJETTAETheme
+import kotlinx.coroutines.flow.MutableStateFlow
 import java.time.LocalDate
 
 // MARK: - Registration Dependencies | 네 유형의 저장 UseCase 관리
@@ -92,10 +101,45 @@ fun MainTabScreen(
         }
     )
 ) {
+    // MARK: - Theme Repository | 화면 테마 저장소 생성
+    val context = LocalContext.current.applicationContext
+    val repository = remember(context) { DataStoreThemeRepository(context) }
+    val selectedTheme by repository.selectedTheme.collectAsStateWithLifecycle(initialValue = AppThemeMode.SYSTEM)
+    val systemDarkTheme = isSystemInDarkTheme()
+
+    val darkTheme = when (selectedTheme) {
+        AppThemeMode.SYSTEM -> systemDarkTheme
+        AppThemeMode.LIGHT -> false
+        AppThemeMode.DARK -> true
+    }
+
+    // MARK: - System Bars | 화면 테마에 따라 상태바와 내비게이션 바 아이콘 명암 적용
+    val activity = LocalContext.current.findActivity()
+
+    SideEffect {
+        activity?.window?.let { window ->
+            WindowInsetsControllerCompat(window, window.decorView).apply {
+                isAppearanceLightStatusBars = !darkTheme
+                isAppearanceLightNavigationBars = !darkTheme
+            }
+        }
+    }
+
+    JENALJETTAETheme(darkTheme = darkTheme) {
+        MainTabContent(themeRepository = repository, homeViewModel = homeViewModel)
+    }
+}
+
+// MARK: - Main Tab Content | 홈·보관함·설정 탭 및 하위 화면
+@Composable
+private fun MainTabContent(themeRepository: ThemeRepository, homeViewModel: HomeViewModel) {
     var selectedTab by rememberSaveable { mutableStateOf(MainTab.HOME) }
     var showsRegistrationTypeSelection by rememberSaveable { mutableStateOf(false) }
     var selectedItemId by rememberSaveable { mutableStateOf<String?>(null) }
+
     val colors = AppTheme.colors
+    val appContext = LocalContext.current.applicationContext
+    val notificationPermissionRepository = remember(appContext) { SystemNotificationPermissionRepository(appContext) }
 
     // MARK: - Registration | UseCase 및 저장 완료 콜백
     if (showsRegistrationTypeSelection) {
@@ -210,6 +254,7 @@ fun MainTabScreen(
     ) { innerPadding ->
         // MARK: - Detail Destination | 홈·보관함 항목 상세화면, 하단 탭 숨김
         val itemId = selectedItemId
+
         if (itemId != null) {
             ManagedItemDetailDestination(
                 itemId = itemId,
@@ -231,8 +276,9 @@ fun MainTabScreen(
                     onOpenDetail = { selectedItemId = it }
                 )
 
-                MainTab.SETTINGS -> TabPlaceholderScreen(
-                    title = selectedTab.title,
+                MainTab.SETTINGS -> SettingsScreen(
+                    themeRepository = themeRepository,
+                    notificationPermissionRepository = notificationPermissionRepository,
                     modifier = Modifier.padding(innerPadding)
                 )
             }
@@ -245,9 +291,11 @@ fun MainTabScreen(
 private fun LibraryDestination(onOpenDetail: (String) -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current.applicationContext
     val repository = remember(context) { RoomManagedItemRepository(AppDatabase.getInstance(context).managedItemDao()) }
+
     val libraryViewModel: LibraryViewModel = viewModel(
         factory = viewModelFactory { initializer { LibraryViewModel(repository) } }
     )
+
     LibraryScreen(viewModel = libraryViewModel, onOpenDetail = onOpenDetail, modifier = modifier)
 }
 
@@ -256,42 +304,23 @@ private fun LibraryDestination(onOpenDetail: (String) -> Unit, modifier: Modifie
 private fun ManagedItemDetailDestination(itemId: String, onBack: () -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current.applicationContext
     val repository = remember(context) { RoomManagedItemRepository(AppDatabase.getInstance(context).managedItemDao()) }
+
     val detailViewModel: ManagedItemDetailViewModel = viewModel(
         key = "managed_item_detail:$itemId",
         factory = viewModelFactory { initializer { ManagedItemDetailViewModel(itemId, repository) } }
     )
+
     ManagedItemDetailScreen(viewModel = detailViewModel, onBack = onBack, modifier = modifier)
 }
 
-// MARK: - Temporary Tab Screen | 설정 임시 화면
-@Composable
-private fun TabPlaceholderScreen(
-    title: String,
-    modifier: Modifier = Modifier
-) {
-    val colors = AppTheme.colors
+// MARK: - Preview Theme Repository | DataStore와 분리된 미리보기용 저장소
+private class PreviewThemeRepository(initialTheme: AppThemeMode) : ThemeRepository {
+    private val state = MutableStateFlow(initialTheme)
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(
-                horizontal = AppSpacing.screenHorizontal,
-                vertical = AppSpacing.large
-            ),
-        verticalArrangement = Arrangement.spacedBy(AppSpacing.small),
-        horizontalAlignment = Alignment.Start
-    ) {
-        Text(
-            text = title,
-            style = AppTypography.screenTitle,
-            color = colors.textPrimary
-        )
+    override val selectedTheme = state
 
-        Text(
-            text = "$title 화면 개발 예정",
-            style = AppTypography.body,
-            color = colors.textSecondary
-        )
+    override suspend fun saveTheme(theme: AppThemeMode) {
+        state.value = theme
     }
 }
 
@@ -300,8 +329,9 @@ private fun TabPlaceholderScreen(
 @Composable
 private fun MainTabLightPreview() {
     JENALJETTAETheme(darkTheme = false) {
-        MainTabScreen(
-            homeViewModel = HomeViewModel(SampleManagedItemRepository())
+        MainTabContent(
+            themeRepository = remember { PreviewThemeRepository(AppThemeMode.LIGHT) },
+            homeViewModel = remember { HomeViewModel(SampleManagedItemRepository()) }
         )
     }
 }
@@ -310,8 +340,21 @@ private fun MainTabLightPreview() {
 @Composable
 private fun MainTabDarkPreview() {
     JENALJETTAETheme(darkTheme = true) {
-        MainTabScreen(
-            homeViewModel = HomeViewModel(SampleManagedItemRepository())
+        MainTabContent(
+            themeRepository = remember { PreviewThemeRepository(AppThemeMode.DARK) },
+            homeViewModel = remember { HomeViewModel(SampleManagedItemRepository()) }
         )
     }
+}
+
+// MARK: - Activity Context | ContextThemeWrapper에서도 Activity 탐색
+private fun Context.findActivity(): Activity? {
+    var current: Context = this
+
+    while (current is ContextWrapper) {
+        if (current is Activity) return current
+        current = current.baseContext
+    }
+
+    return current as? Activity
 }

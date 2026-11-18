@@ -86,4 +86,7 @@ dependencies {
 
     // MARK: - Navigation | iOS NavigationStack과 같은 화면 백스택 관리
     implementation("androidx.navigation:navigation-compose:2.9.8")
+
+    // MARK: - DataStore | 화면 테마 설정 저장
+    implementation("androidx.datastore:datastore-preferences:1.3.0")
 }

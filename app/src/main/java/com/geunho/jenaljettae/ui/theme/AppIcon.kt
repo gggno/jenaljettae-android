@@ -49,4 +49,11 @@ object AppIcon {
     val sort = R.drawable.ic_jnt_sort
     val info = R.drawable.ic_jnt_info
     val warning = R.drawable.ic_jnt_warning
+
+    // MARK: - Settings Icons | 화면 테마 아이콘
+    val theme = R.drawable.ic_jnt_theme
+    val system = R.drawable.ic_jnt_system
+    val light = R.drawable.ic_jnt_light
+    val dark = R.drawable.ic_jnt_dark
+
 }

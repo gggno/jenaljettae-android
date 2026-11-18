@@ -9,8 +9,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,7 +23,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -53,6 +50,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.geunho.jenaljettae.ui.components.AppNavigationHeader
 
 // MARK: - Coupon Registration Method | 등록 방법 선택 및 화면 이동 이벤트 전달
 @Composable
@@ -125,38 +123,8 @@ fun CouponRegistrationMethodScreen(
             .statusBarsPadding()
             .navigationBarsPadding()
     ) {
-        // MARK: - Header | 뒤로가기 및 화면 제목
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(
-                    horizontal = AppSpacing.xSmall,
-                    vertical = AppSpacing.small
-                ),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(
-                onClick = onBack,
-                modifier = Modifier.size(48.dp)
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_jnt_chevron_left),
-                    contentDescription = "뒤로 가기",
-                    tint = colors.textPrimary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-
-            Text(
-                text = "쿠폰 등록 방법",
-                style = MaterialTheme.typography.titleMedium,
-                color = colors.textPrimary,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.weight(1f)
-            )
-
-            Spacer(modifier = Modifier.size(48.dp))
-        }
+        // MARK: - Header | 쿠폰 등록 방법
+        AppNavigationHeader(title = "쿠폰 등록 방법", onBack = onBack)
 
         // MARK: - Content | 등록 방식 선택 및 안내
         Column(

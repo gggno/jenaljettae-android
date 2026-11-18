@@ -78,6 +78,7 @@ import com.geunho.jenaljettae.features.home.registration.LocalOnSubscriptionSave
 import com.geunho.jenaljettae.features.home.registration.LocalSaveSubscriptionUseCase
 import com.geunho.jenaljettae.features.home.registration.RegistrationImagePreview
 import com.geunho.jenaljettae.features.home.registration.RegistrationImageSection
+import com.geunho.jenaljettae.ui.components.AppNavigationHeader
 import com.geunho.jenaljettae.ui.theme.AppRadius
 import com.geunho.jenaljettae.ui.theme.AppSpacing
 import com.geunho.jenaljettae.ui.theme.AppTheme
@@ -165,27 +166,7 @@ fun SubscriptionManualEntryScreen(
             .statusBarsPadding().navigationBarsPadding().imePadding()
     ) {
         // MARK: - Header | 등록 화면 상단
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = AppSpacing.xSmall, vertical = AppSpacing.small),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onBack, modifier = Modifier.size(48.dp)) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_jnt_chevron_left),
-                    contentDescription = "뒤로 가기",
-                    tint = colors.textPrimary,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Text(
-                text = if (editingItem != null) "정기 구독 수정" else "정기 구독 등록",
-                style = MaterialTheme.typography.titleMedium,
-                color = colors.textPrimary,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.weight(1f)
-            )
-            Spacer(modifier = Modifier.size(48.dp))
-        }
+        AppNavigationHeader(title = if (editingItem != null) "정기 구독 수정" else "정기 구독 등록", onBack = onBack)
 
         Column(
             modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())
